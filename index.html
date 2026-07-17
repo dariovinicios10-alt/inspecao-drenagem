@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1b5e20">
+  <meta name="description" content="Inspeção de Drenagem - Consórcio Caminhos da Celulose (100% offline)">
+  <title>Inspeção de Drenagem</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <link rel="stylesheet" href="./app.css">
+</head>
+<body>
+
+  <header class="topo">
+    <img src="./Caminhos%20da%20Celulose.svg" alt="Caminhos da Celulose" class="logo-topo">
+    <h1>Inspeção de Drenagem</h1>
+    <p class="subtitulo">Consórcio Caminhos da Celulose</p>
+    <div id="status-bar">
+      <span id="status-conexao" class="badge">...</span>
+      <span id="status-base" class="badge">Base: carregando...</span>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ============ TELA 1: INÍCIO ============ -->
+    <section id="tela-inicio" class="tela ativa">
+      <div class="card">
+        <label for="inp-inspetor">Nome do Inspetor <span style="color:#c62828">*</span></label>
+        <input type="text" id="inp-inspetor" placeholder="Digite seu nome (obrigatório)" autocomplete="name" required>
+
+        <label for="sel-rodovia">Rodovia</label>
+        <select id="sel-rodovia">
+          <option value="">-- Selecione a Rodovia --</option>
+        </select>
+
+        <label for="sel-tipo">Tipo de Drenagem</label>
+        <select id="sel-tipo" disabled>
+          <option value="">-- Selecione o Tipo --</option>
+        </select>
+
+        <button id="btn-buscar" class="btn btn-primario" disabled>Buscar Drenagens &#8594;</button>
+      </div>
+
+      <div class="card acoes-secundarias">
+        <button id="btn-ver-salvas" class="btn btn-secundario">
+          &#128203; Inspeções Salvas (<span id="qtd-salvas">0</span>)
+        </button>
+        <button id="btn-gerenciar-base" class="btn btn-fantasma">&#128451; Gerenciar Base de Dados</button>
+      </div>
+    </section>
+
+    <!-- ============ TELA: BASE DE DADOS ============ -->
+    <section id="tela-base" class="tela">
+      <button class="btn btn-voltar" data-voltar="tela-inicio">&#8592; Voltar</button>
+      <h2>Base de Dados</h2>
+
+      <div class="card">
+        <label class="btn-foto" for="inp-importar">
+          &#128194; Importar arquivo(s) (.csv ou .xlsx)
+          <input type="file" id="inp-importar" accept=".csv,.xlsx" multiple hidden>
+        </label>
+        <p class="aviso" style="margin-bottom:0">
+          Aceita a tabela consolidada (CSV/Excel) ou fichas já preenchidas no
+          formato do MODELO_Drenagem. Reimportar um arquivo com o mesmo nome
+          substitui os dados dele.
+        </p>
+      </div>
+
+      <h2 style="font-size:0.95rem">Arquivos carregados</h2>
+      <div id="barra-selecao" class="barra-selecao" hidden>
+        <label class="chk-linha">
+          <input type="checkbox" id="chk-todos"> Selecionar todos
+        </label>
+        <button id="btn-excluir-selecionados" class="btn btn-perigo" disabled>
+          &#128465; Excluir selecionados (<span id="qtd-selecionados">0</span>)
+        </button>
+      </div>
+      <ul id="lista-arquivos" class="lista"></ul>
+      <p id="msg-base-vazia" class="aviso" hidden>Nenhum arquivo importado ainda.</p>
+      <p id="msg-importacao" class="aviso" hidden></p>
+      <button id="btn-recarregar-pasta" class="btn btn-fantasma">&#8635; Recarregar CSV da pasta (SharePoint)</button>
+    </section>
+
+    <!-- ============ TELA 2: LISTA DE DRENAGENS ============ -->
+    <section id="tela-lista" class="tela">
+      <button class="btn btn-voltar" data-voltar="tela-inicio">&#8592; Voltar</button>
+      <h2 id="titulo-lista">Selecione a drenagem</h2>
+      <ul id="lista-drenagens" class="lista"></ul>
+    </section>
+
+    <!-- ============ TELA 3: FORMULÁRIO DE INSPEÇÃO ============ -->
+    <section id="tela-form" class="tela">
+      <button class="btn btn-voltar" data-voltar="tela-lista">&#8592; Voltar</button>
+      <h2>Formulário de Inspeção</h2>
+
+      <div class="card" id="dados-drenagem"><!-- preenchido via JS --></div>
+
+      <div class="card">
+        <span class="rotulo-grupo">Diagnóstico</span>
+        <div class="grupo-radios" id="grupo-diagnostico">
+          <label class="opcao-radio ok">
+            <input type="radio" name="diagnostico" value="OK"><span>OK</span>
+          </label>
+          <label class="opcao-radio reparar">
+            <input type="radio" name="diagnostico" value="Reparar"><span>Reparar</span>
+          </label>
+          <label class="opcao-radio limpeza">
+            <input type="radio" name="diagnostico" value="Limpeza"><span>Limpeza</span>
+          </label>
+          <label class="opcao-radio implantar">
+            <input type="radio" name="diagnostico" value="Implantar"><span>Implantar</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="rotulo-grupo">Fotos</span>
+
+        <label class="btn-foto" for="inp-foto1">
+          &#128247; FOTO 1: PANORÂMICA
+          <input type="file" id="inp-foto1" accept="image/*" capture="environment" hidden>
+        </label>
+        <img id="prev-foto1" class="preview-foto" alt="Prévia da foto panorâmica" hidden>
+
+        <label class="btn-foto" for="inp-foto2">
+          &#128247; FOTO 2: DETALHE
+          <input type="file" id="inp-foto2" accept="image/*" capture="environment" hidden>
+        </label>
+        <img id="prev-foto2" class="preview-foto" alt="Prévia da foto de detalhe" hidden>
+      </div>
+
+      <div class="card">
+        <label for="inp-obs">Observações (opcional)</label>
+        <textarea id="inp-obs" rows="3" placeholder="Anotações adicionais..."></textarea>
+      </div>
+
+      <button id="btn-salvar" class="btn btn-primario">&#128190; Salvar Rascunho</button>
+    </section>
+
+    <!-- ============ TELA 4: INSPEÇÕES SALVAS / EXPORTAÇÃO ============ -->
+    <section id="tela-salvas" class="tela">
+      <button class="btn btn-voltar" data-voltar="tela-inicio">&#8592; Voltar</button>
+      <h2>Inspeções Salvas</h2>
+      <ul id="lista-salvas" class="lista"></ul>
+      <p id="msg-vazio" class="aviso" hidden>Nenhuma inspeção salva ainda.</p>
+      <button id="btn-gerar" class="btn btn-primario">&#128196; Gerar Relatório Excel</button>
+      <button id="btn-gerar-pdf" class="btn btn-secundario" style="margin-top:10px">&#128462; Gerar Relatório PDF (arquivo único)</button>
+      <button id="btn-enviar" class="btn btn-primario" style="margin-top:10px" hidden>&#9729; Enviar pendentes ao SharePoint (<span id="qtd-pendentes">0</span>)</button>
+      <p id="msg-exportacao" class="aviso" hidden></p>
+    </section>
+
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <!-- PapaParse (CSV) e ExcelJS (relatório) - cacheadas pelo Service Worker no 1º acesso -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.4/lib/msal-browser.min.js" defer></script>
+  <script src="./app.js" defer></script>
+</body>
+</html>

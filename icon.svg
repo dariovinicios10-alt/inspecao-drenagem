@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1b5e20"/>
+  <!-- rodovia -->
+  <path d="M216 96 L296 96 L336 416 L176 416 Z" fill="#eceff1"/>
+  <path d="M252 120 L260 120 L262 168 L250 168 Z" fill="#1b5e20"/>
+  <path d="M248 208 L264 208 L266 256 L246 256 Z" fill="#1b5e20"/>
+  <path d="M244 296 L268 296 L271 352 L241 352 Z" fill="#1b5e20"/>
+  <!-- gota de drenagem -->
+  <path d="M396 208 c0 0 -52 62 -52 96 a52 52 0 0 0 104 0 c0 -34 -52 -96 -52 -96 Z" fill="#4fc3f7" stroke="#eceff1" stroke-width="12"/>
+</svg>

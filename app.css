@@ -1,0 +1,271 @@
+/* ===== Inspeção de Drenagem - Consórcio Caminhos da Celulose ===== */
+
+:root {
+  --verde: #1b5e20;
+  --verde-claro: #2e7d32;
+  --cinza-fundo: #f2f4f3;
+  --cinza-borda: #d5dad7;
+  --texto: #1d2521;
+  --texto-suave: #5c6660;
+  --branco: #ffffff;
+  --vermelho: #c62828;
+  --laranja: #ef6c00;
+  --azul: #1565c0;
+  --raio: 10px;
+  --sombra: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--cinza-fundo);
+  color: var(--texto);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- Cabeçalho ---------- */
+.topo {
+  background: var(--verde);
+  color: var(--branco);
+  padding: 14px 16px 10px;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: var(--sombra);
+}
+.topo h1 { margin: 0; font-size: 1.15rem; line-height: 1.3; }
+.logo-topo {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  height: 26px;
+  background: var(--branco);
+  border-radius: 6px;
+  padding: 3px 6px;
+  box-shadow: var(--sombra);
+}
+.subtitulo { margin: 2px 0 8px; font-size: 0.8rem; opacity: 0.85; }
+
+#status-bar { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.badge {
+  font-size: 0.7rem;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.badge.online { background: #43a047; }
+.badge.offline { background: #e53935; }
+
+/* ---------- Telas ---------- */
+main { max-width: 560px; margin: 0 auto; padding: 14px 14px 40px; }
+.tela { display: none; }
+.tela.ativa { display: block; animation: aparecer 0.18s ease-out; }
+@keyframes aparecer { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; } }
+
+h2 { font-size: 1.05rem; margin: 10px 0; }
+
+/* ---------- Cartões e campos ---------- */
+.card {
+  background: var(--branco);
+  border-radius: var(--raio);
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: var(--sombra);
+}
+
+label { display: block; font-weight: 600; font-size: 0.85rem; margin: 12px 0 4px; }
+label:first-child { margin-top: 0; }
+.rotulo-grupo { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 10px; }
+
+input[type="text"], select, textarea {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  border: 1px solid var(--cinza-borda);
+  border-radius: 8px;
+  background: var(--branco);
+  color: var(--texto);
+}
+select:disabled { background: #eceeed; color: var(--texto-suave); }
+textarea { resize: vertical; font-family: inherit; }
+
+/* ---------- Botões ---------- */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  margin-top: 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  border: none;
+  border-radius: var(--raio);
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.btn:active { filter: brightness(0.9); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-primario { background: var(--verde-claro); color: var(--branco); }
+.btn-secundario { background: var(--azul); color: var(--branco); margin-top: 0; }
+.btn-fantasma {
+  background: transparent;
+  color: var(--verde-claro);
+  border: 1px dashed var(--verde-claro);
+  font-weight: 600;
+}
+.btn-voltar {
+  width: auto;
+  padding: 8px 16px;
+  margin: 0 0 6px;
+  background: var(--branco);
+  color: var(--texto);
+  border: 1px solid var(--cinza-borda);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.acoes-secundarias { padding-top: 16px; }
+
+/* ---------- Listas ---------- */
+.lista { list-style: none; margin: 0; padding: 0; }
+.lista li {
+  background: var(--branco);
+  border-radius: var(--raio);
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: var(--sombra);
+  cursor: pointer;
+  border-left: 5px solid var(--verde-claro);
+}
+.lista li:active { filter: brightness(0.95); }
+.lista .linha-titulo { font-weight: 700; font-size: 0.95rem; }
+.lista .linha-detalhe { font-size: 0.8rem; color: var(--texto-suave); margin-top: 4px; }
+
+.lista .tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--branco);
+  margin-top: 6px;
+}
+.tag.ok { background: #2e7d32; }
+.tag.reparar { background: var(--vermelho); }
+.tag.limpeza { background: var(--laranja); }
+.tag.implantar { background: var(--azul); }
+
+/* ---------- Seleção múltipla (Base de Dados) ---------- */
+.barra-selecao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.chk-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chk-linha input[type="checkbox"],
+.chk-arquivo { width: 18px; height: 18px; accent-color: var(--vermelho); cursor: pointer; }
+.chk-arquivo { float: left; margin-right: 10px; margin-top: 2px; }
+.btn-perigo {
+  background: var(--vermelho);
+  color: var(--branco);
+  width: auto;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+}
+.btn-perigo:disabled { opacity: 0.45; }
+
+.btn-excluir {
+  float: right;
+  background: none;
+  border: none;
+  color: var(--vermelho);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 2px 8px;
+}
+
+/* ---------- Dados da drenagem (formulário) ---------- */
+#dados-drenagem table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+#dados-drenagem td { padding: 5px 4px; border-bottom: 1px solid #eef1ef; }
+#dados-drenagem td:first-child { font-weight: 600; color: var(--texto-suave); white-space: nowrap; }
+
+/* ---------- Radios de diagnóstico ---------- */
+.grupo-radios { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.opcao-radio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 8px;
+  margin: 0;
+  border: 2px solid var(--cinza-borda);
+  border-radius: var(--raio);
+  font-weight: 700;
+  cursor: pointer;
+}
+.opcao-radio input { accent-color: var(--verde-claro); width: 18px; height: 18px; margin: 0; }
+.opcao-radio:has(input:checked) { color: var(--branco); }
+.opcao-radio.ok:has(input:checked) { background: #2e7d32; border-color: #2e7d32; }
+.opcao-radio.reparar:has(input:checked) { background: var(--vermelho); border-color: var(--vermelho); }
+.opcao-radio.limpeza:has(input:checked) { background: var(--laranja); border-color: var(--laranja); }
+.opcao-radio.implantar:has(input:checked) { background: var(--azul); border-color: var(--azul); }
+
+/* ---------- Fotos ---------- */
+.btn-foto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  margin: 10px 0 0;
+  background: #eef4ef;
+  border: 2px dashed var(--verde-claro);
+  border-radius: var(--raio);
+  color: var(--verde);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: center;
+}
+.preview-foto {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-top: 8px;
+  border: 1px solid var(--cinza-borda);
+}
+
+/* ---------- Avisos e toast ---------- */
+.aviso { text-align: center; color: var(--texto-suave); font-size: 0.9rem; }
+
+.toast {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #263238;
+  color: var(--branco);
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  max-width: 90%;
+  text-align: center;
+}
