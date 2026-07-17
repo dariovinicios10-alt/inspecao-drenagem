@@ -224,13 +224,21 @@ textarea { resize: vertical; font-family: inherit; }
 .opcao-radio.implantar:has(input:checked) { background: var(--azul); border-color: var(--azul); }
 
 /* ---------- Fotos ---------- */
+.rotulo-foto {
+  display: block;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--verde);
+  margin: 14px 0 2px;
+}
+.dupla-foto { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .btn-foto {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   padding: 16px;
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   background: #eef4ef;
   border: 2px dashed var(--verde-claro);
   border-radius: var(--raio);

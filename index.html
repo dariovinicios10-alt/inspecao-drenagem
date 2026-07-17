@@ -165,16 +165,26 @@
       <div class="card">
         <span class="rotulo-grupo">Fotos</span>
 
-        <label class="btn-foto" for="inp-foto1">
-          &#128247; FOTO 1: PANORÂMICA
-          <input type="file" id="inp-foto1" accept="image/*" hidden>
-        </label>
+        <span class="rotulo-foto">&#128247; FOTO 1: PANORÂMICA</span>
+        <div class="dupla-foto">
+          <label class="btn-foto" for="inp-foto1-cam">&#128247; Câmera
+            <input type="file" id="inp-foto1-cam" accept="image/*" capture="environment" hidden>
+          </label>
+          <label class="btn-foto" for="inp-foto1-gal">&#128194; Galeria
+            <input type="file" id="inp-foto1-gal" accept="image/*" hidden>
+          </label>
+        </div>
         <img id="prev-foto1" class="preview-foto" alt="Prévia da foto panorâmica" hidden>
 
-        <label class="btn-foto" for="inp-foto2">
-          &#128247; FOTO 2: DETALHE
-          <input type="file" id="inp-foto2" accept="image/*" hidden>
-        </label>
+        <span class="rotulo-foto">&#128247; FOTO 2: DETALHE</span>
+        <div class="dupla-foto">
+          <label class="btn-foto" for="inp-foto2-cam">&#128247; Câmera
+            <input type="file" id="inp-foto2-cam" accept="image/*" capture="environment" hidden>
+          </label>
+          <label class="btn-foto" for="inp-foto2-gal">&#128194; Galeria
+            <input type="file" id="inp-foto2-gal" accept="image/*" hidden>
+          </label>
+        </div>
         <img id="prev-foto2" class="preview-foto" alt="Prévia da foto de detalhe" hidden>
       </div>
 

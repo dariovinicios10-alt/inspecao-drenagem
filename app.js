@@ -869,7 +869,8 @@ function abrirFormulario(drenagem) {
 
   document.querySelectorAll('input[name="diagnostico"]').forEach(r => { r.checked = false; });
   ['1', '2'].forEach(n => {
-    $('#inp-foto' + n).value = '';
+    $('#inp-foto' + n + '-cam').value = '';
+    $('#inp-foto' + n + '-gal').value = '';
     const prev = $('#prev-foto' + n);
     prev.hidden = true;
     prev.src = '';
@@ -1656,8 +1657,11 @@ function ligarEventos() {
     renderizarBase();
   });
 
-  $('#inp-foto1').addEventListener('change', e => aoCapturarFoto(e, 'foto1'));
-  $('#inp-foto2').addEventListener('change', e => aoCapturarFoto(e, 'foto2'));
+  // Cada foto tem 2 fontes (câmera e galeria) que gravam no mesmo slot
+  $('#inp-foto1-cam').addEventListener('change', e => aoCapturarFoto(e, 'foto1'));
+  $('#inp-foto1-gal').addEventListener('change', e => aoCapturarFoto(e, 'foto1'));
+  $('#inp-foto2-cam').addEventListener('change', e => aoCapturarFoto(e, 'foto2'));
+  $('#inp-foto2-gal').addEventListener('change', e => aoCapturarFoto(e, 'foto2'));
   $('#btn-salvar').addEventListener('click', salvarRascunho);
   $('#btn-gerar').addEventListener('click', gerarRelatorio);
   $('#btn-gerar-pdf').addEventListener('click', gerarPDF);
