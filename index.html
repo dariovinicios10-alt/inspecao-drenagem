@@ -90,6 +90,51 @@
       <button class="btn btn-voltar" data-voltar="tela-inicio">&#8592; Voltar</button>
       <h2 id="titulo-lista">Selecione a drenagem</h2>
       <ul id="lista-drenagens" class="lista"></ul>
+      <button id="btn-incluir-nova" class="btn btn-fantasma">&#10133; Incluir drenagem que não está na base</button>
+    </section>
+
+    <!-- ============ TELA: NOVA DRENAGEM (fora da base) ============ -->
+    <section id="tela-nova" class="tela">
+      <button class="btn btn-voltar" data-voltar="tela-lista">&#8592; Voltar</button>
+      <h2>Incluir drenagem fora da base</h2>
+
+      <div class="card">
+        <label for="nv-rodovia">Rodovia *</label>
+        <input type="text" id="nv-rodovia">
+
+        <label for="nv-sentido">Sentido</label>
+        <select id="nv-sentido">
+          <option value="">N/D</option>
+          <option>Leste</option>
+          <option>Oeste</option>
+          <option>Norte</option>
+          <option>Sul</option>
+          <option>Único</option>
+        </select>
+
+        <label for="nv-tipo">Tipo / descrição *</label>
+        <input type="text" id="nv-tipo" placeholder="Ex.: Sarjeta, Meio-Fio, DP - Concreto...">
+
+        <label for="nv-km-ini">Km Inicial *</label>
+        <input type="text" id="nv-km-ini" placeholder="Ex.: 104+480">
+
+        <label for="nv-km-fim">Km Final</label>
+        <input type="text" id="nv-km-fim" placeholder="Deixe vazio se for pontual">
+
+        <label for="nv-comp">Comprimento (m)</label>
+        <input type="text" id="nv-comp" inputmode="decimal" placeholder="N/D">
+      </div>
+
+      <div class="card">
+        <span class="rotulo-grupo">Coordenadas (GPS do celular)</span>
+        <button id="btn-gps-ini" class="btn btn-secundario" style="margin-top:0">&#128205; Capturar posição INICIAL</button>
+        <p id="gps-ini-info" class="aviso" style="margin:6px 0 12px">Nenhuma posição capturada</p>
+        <button id="btn-gps-fim" class="btn btn-secundario" style="margin-top:0">&#128205; Capturar posição FINAL</button>
+        <p id="gps-fim-info" class="aviso" style="margin:6px 0 0">Nenhuma posição capturada</p>
+      </div>
+
+      <p class="aviso">Campos com * são obrigatórios. O restante pode ficar vazio (N/D).</p>
+      <button id="btn-nv-continuar" class="btn btn-primario">Continuar para a inspeção &#8594;</button>
     </section>
 
     <!-- ============ TELA 3: FORMULÁRIO DE INSPEÇÃO ============ -->

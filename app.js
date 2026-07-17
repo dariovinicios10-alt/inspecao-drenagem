@@ -775,6 +775,80 @@ async function renderizarLista() {
   mostrarTela('tela-lista');
 }
 
+// ---------- Nova drenagem fora da base (incluída em campo) ----------
+const ORIGEM_CAMPO = 'Incluídas em campo';
+let gpsNova = { latIni: '', lonIni: '', latFim: '', lonFim: '' };
+
+function abrirNovaDrenagem() {
+  gpsNova = { latIni: '', lonIni: '', latFim: '', lonFim: '' };
+  $('#nv-rodovia').value = $('#sel-rodovia').value || '';
+  $('#nv-sentido').value = '';
+  // pré-preenche a classificação escolhida; o fiscal completa o detalhe
+  $('#nv-tipo').value = ($('#sel-tipo').value === 'DRENAGEM PROFUNDA') ? 'DP' : '';
+  $('#nv-km-ini').value = '';
+  $('#nv-km-fim').value = '';
+  $('#nv-comp').value = '';
+  $('#gps-ini-info').textContent = 'Nenhuma posição capturada';
+  $('#gps-fim-info').textContent = 'Nenhuma posição capturada';
+  mostrarTela('tela-nova');
+}
+
+function capturarGPS(qual) {
+  if (!('geolocation' in navigator)) {
+    mostrarToast('Este aparelho não oferece GPS ao navegador.');
+    return;
+  }
+  const info = $(qual === 'ini' ? '#gps-ini-info' : '#gps-fim-info');
+  info.textContent = 'Obtendo posição... (aguarde)';
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const lat = pos.coords.latitude.toFixed(8);
+      const lon = pos.coords.longitude.toFixed(8);
+      if (qual === 'ini') { gpsNova.latIni = lat; gpsNova.lonIni = lon; }
+      else { gpsNova.latFim = lat; gpsNova.lonFim = lon; }
+      info.textContent = `✔ ${lat}, ${lon} (±${Math.round(pos.coords.accuracy)} m)`;
+    },
+    (erro) => {
+      info.textContent = 'Falha ao obter posição: ' + erro.message;
+      mostrarToast('Não foi possível obter o GPS. Verifique a permissão de localização.');
+    },
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+  );
+}
+
+async function continuarNovaDrenagem() {
+  const rodovia = $('#nv-rodovia').value.trim();
+  const tipo = $('#nv-tipo').value.trim();
+  const kmIni = $('#nv-km-ini').value.trim();
+  if (!rodovia || !tipo || !kmIni) {
+    mostrarToast('Preencha os campos obrigatórios: Rodovia, Tipo e Km Inicial.');
+    return;
+  }
+
+  const nova = {
+    'Rodovia': rodovia,
+    'Sentido': $('#nv-sentido').value,
+    'Tipo': tipo,
+    'Km Inicial': kmIni,
+    'Km Final': $('#nv-km-fim').value.trim(),
+    'Comprimento (m)': $('#nv-comp').value.trim(),
+    'Latitude Inicial': gpsNova.latIni,
+    'Longitude Inicial': gpsNova.lonIni,
+    'Latitude Final': gpsNova.latFim,
+    'Longitude Final': gpsNova.lonFim,
+    _origem: ORIGEM_CAMPO
+  };
+
+  // entra na base local (aparece em "Gerenciar Base de Dados" como
+  // "Incluídas em campo") e segue direto para a inspeção normal
+  await idbSalvar(STORE_DRENAGENS, nova);
+  drenagens.push(nova);
+  popularRodovias();
+  $('#sel-rodovia').value = rodovia;
+  mostrarToast('Drenagem incluída na base deste aparelho.');
+  abrirFormulario(nova);
+}
+
 // ---------- Tela de formulário ----------
 function abrirFormulario(drenagem) {
   drenagemSelecionada = drenagem;
@@ -1548,6 +1622,10 @@ function ligarEventos() {
   $('#sel-rodovia').addEventListener('change', () => { popularTipos(); validarBusca(); });
   $('#sel-tipo').addEventListener('change', validarBusca);
   $('#btn-buscar').addEventListener('click', renderizarLista);
+  $('#btn-incluir-nova').addEventListener('click', abrirNovaDrenagem);
+  $('#btn-gps-ini').addEventListener('click', () => capturarGPS('ini'));
+  $('#btn-gps-fim').addEventListener('click', () => capturarGPS('fim'));
+  $('#btn-nv-continuar').addEventListener('click', continuarNovaDrenagem);
   $('#btn-ver-salvas').addEventListener('click', renderizarSalvas);
   $('#btn-gerenciar-base').addEventListener('click', () => {
     renderizarBase();
