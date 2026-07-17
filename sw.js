@@ -5,7 +5,7 @@
  * ===================================================================== */
 'use strict';
 
-const VERSAO_CACHE = 'drenagem-v16';
+const VERSAO_CACHE = 'drenagem-v17';
 
 // Arquivos essenciais do app (mesma pasta no SharePoint)
 const ARQUIVOS_APP = [

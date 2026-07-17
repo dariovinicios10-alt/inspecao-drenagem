@@ -1475,7 +1475,9 @@ function obterMsal() {
       auth: {
         clientId: CONFIG_ENVIO.clientId,
         authority: 'https://login.microsoftonline.com/' + CONFIG_ENVIO.tenantId,
-        redirectUri: window.location.origin + window.location.pathname
+        // sempre sem o "index.html" final, para bater com a URI registrada no Azure
+        redirectUri: (window.location.origin + window.location.pathname)
+          .replace(/index\.html$/i, '')
       },
       cache: { cacheLocation: 'localStorage' }
     });
