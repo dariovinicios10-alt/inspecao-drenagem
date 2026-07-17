@@ -1368,11 +1368,11 @@ async function gerarPDF() {
 // (instruções no LEIA-ME) e preenche clientId abaixo. Sem clientId, o
 // botão de envio fica oculto e o app funciona normalmente.
 const CONFIG_ENVIO = {
-  clientId: '',                                        // <- preencher (Azure AD)
-  tenantId: 'organizations',                           // ou o ID do tenant
+  clientId: '9c0d4bf4-4cca-4e64-8d3b-8d1031801313',    // App Registration (Azure AD)
+  tenantId: '7876d343-00f5-4c18-9764-5133f545aec6',    // Directory (tenant) ID
   escopos: ['Sites.ReadWrite.All'],
   siteHost: 'caminhosdacelulose.sharepoint.com',
-  sitePath: '/sites/SEU-SITE',                         // <- caminho do site
+  sitePath: '/sites/SEU-SITE',                         // <- FALTA: caminho do site
   pastaDestino: 'Inspecoes Drenagem'                   // pasta em "Documentos"
 };
 
