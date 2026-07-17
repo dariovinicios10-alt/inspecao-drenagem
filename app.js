@@ -733,15 +733,29 @@ function escapeHTML(s) {
   ));
 }
 
+// Chave única de uma drenagem (para saber se já foi inspecionada)
+function chaveDrenagem(d) {
+  return ['Rodovia', 'Sentido', 'Tipo', 'Km Inicial', 'Km Final']
+    .map(c => String((d || {})[c] || '').trim()).join('|');
+}
+
 // ---------- Tela de lista ----------
-function renderizarLista() {
+async function renderizarLista() {
   const rodovia = $('#sel-rodovia').value;
   const tipo = $('#sel-tipo').value;
-  const filtradas = drenagens.filter(d =>
+
+  // drenagens já inspecionadas neste aparelho saem da lista (evita duplicidade)
+  const inspecoes = await idbListar(STORE_INSPECOES);
+  const jaFeitas = new Set(inspecoes.map(i => chaveDrenagem(i.drenagem)));
+
+  const doFiltro = drenagens.filter(d =>
     d['Rodovia'].trim() === rodovia && classificacaoDrenagem(d['Tipo']) === tipo
   );
+  const filtradas = doFiltro.filter(d => !jaFeitas.has(chaveDrenagem(d)));
+  const ocultas = doFiltro.length - filtradas.length;
 
-  $('#titulo-lista').textContent = `${rodovia} - ${tipo} (${filtradas.length})`;
+  $('#titulo-lista').textContent = `${rodovia} - ${tipo} (${filtradas.length})` +
+    (ocultas ? ` — ${ocultas} já inspecionada(s)` : '');
   const ul = $('#lista-drenagens');
   ul.innerHTML = '';
 
@@ -851,7 +865,7 @@ async function salvarRascunho() {
     await idbSalvar(STORE_INSPECOES, inspecao);
     await atualizarContadorSalvas();
     mostrarToast('Rascunho salvo com sucesso! ✔');
-    mostrarTela('tela-lista');
+    await renderizarLista(); // remove a drenagem recém-inspecionada da lista
   } catch (e) {
     mostrarToast('Erro ao salvar. Espaço do dispositivo pode estar cheio.');
   }
