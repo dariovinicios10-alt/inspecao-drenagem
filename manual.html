@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual - Inspeção de Drenagem</title>
+<style>
+  :root { --verde:#1b5e20; --verde2:#2e7d32; --fundo:#f2f4f3; --texto:#1d2521; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+         background:var(--fundo); color:var(--texto); font-size:16px; line-height:1.55; }
+  header { background:var(--verde); color:#fff; text-align:center; padding:22px 16px; }
+  header h1 { margin:0; font-size:1.3rem; }
+  header p { margin:4px 0 0; opacity:.85; font-size:.85rem; }
+  main { max-width:680px; margin:0 auto; padding:16px 16px 60px; }
+  section { background:#fff; border-radius:10px; padding:18px 20px; margin:14px 0;
+            box-shadow:0 1px 4px rgba(0,0,0,.12); }
+  h2 { color:var(--verde); font-size:1.05rem; margin:0 0 10px;
+       border-bottom:2px solid #e2e8e3; padding-bottom:6px; }
+  ol, ul { margin:8px 0; padding-left:22px; }
+  li { margin:6px 0; }
+  .destaque { background:#fff8e1; border-left:5px solid #f9a825; border-radius:6px;
+              padding:10px 14px; margin:10px 0; font-size:.95rem; }
+  .ok { background:#e8f5e9; border-left:5px solid var(--verde2); border-radius:6px;
+        padding:10px 14px; margin:10px 0; font-size:.95rem; }
+  .link { word-break:break-all; background:#eef4ef; border-radius:6px; padding:8px 12px;
+          display:block; margin:8px 0; font-weight:700; color:var(--verde);
+          text-decoration:none; text-align:center; }
+  kbd { background:#eceeed; border-radius:4px; padding:1px 7px; font-family:inherit;
+        font-weight:700; font-size:.9em; white-space:nowrap; }
+  footer { text-align:center; font-size:.8rem; color:#5c6660; padding:10px; }
+  @media print { body{background:#fff} section{box-shadow:none; border:1px solid #ddd} }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📖 Manual do App Inspeção de Drenagem</h1>
+  <p>Consórcio Caminhos da Celulose</p>
+</header>
+
+<main>
+
+<section>
+  <h2>1. Instalar o app no celular (só na primeira vez)</h2>
+  <ol>
+    <li><b>Com internet</b>, abra este link no navegador do celular:</li>
+  </ol>
+  <a class="link" href="https://dariovinicios10-alt.github.io/inspecao-drenagem/">https://dariovinicios10-alt.github.io/inspecao-drenagem/</a>
+  <ol start="2">
+    <li>Toque no menu do navegador (⋮ no Android / botão compartilhar <kbd>⬆</kbd> no iPhone).</li>
+    <li>Escolha <kbd>Adicionar à tela de início</kbd> e confirme.</li>
+    <li>Vai aparecer o ícone do app na tela do celular — é por ele que você abre daqui pra frente.</li>
+  </ol>
+  <div class="destaque">⚠️ <b>Importante:</b> abra o app pelo menos <b>uma vez com internet</b> antes de ir a campo.
+  É nesse momento que ele baixa a base de dados e tudo que precisa para funcionar sem sinal.</div>
+</section>
+
+<section>
+  <h2>2. Funciona sem internet?</h2>
+  <div class="ok">✅ <b>Sim, 100% offline.</b> Depois da primeira abertura com internet, o app funciona
+  em qualquer ponto da rodovia, sem sinal nenhum: consultar drenagens, fazer lançamentos, tirar fotos,
+  salvar e até gerar os relatórios Excel e PDF.</div>
+  <p>As inspeções ficam guardadas <b>no seu celular</b> até você gerar o relatório (ou até o envio
+  automático para o SharePoint, quando for liberado).</p>
+</section>
+
+<section>
+  <h2>3. Fazer um lançamento (inspeção)</h2>
+  <ol>
+    <li>Na tela inicial, digite seu <b>nome</b> (obrigatório — sai no controle das inspeções).</li>
+    <li>Escolha a <b>Rodovia</b> (BR-262, BR-267, MS-040, MS-338 ou MS-395).</li>
+    <li>Escolha o <b>Tipo de Drenagem</b>: <kbd>DRENAGEM SUPERFICIAL</kbd> ou <kbd>DRENAGEM PROFUNDA</kbd>.</li>
+    <li>Toque em <kbd>Buscar Drenagens →</kbd> e encontre o <b>KM</b> que você está inspecionando
+        (cada item mostra o KM, o detalhe — sarjeta, meio-fio, bueiro... — o sentido e o comprimento).</li>
+    <li>Confira os dados da drenagem no topo do formulário.</li>
+    <li>Marque o <b>Diagnóstico</b>: <kbd>OK</kbd>, <kbd>Reparar</kbd>, <kbd>Limpeza</kbd> ou <kbd>Implantar</kbd>.</li>
+    <li>Tire as <b>2 fotos</b> (veja as regras abaixo).</li>
+    <li>Se precisar, escreva uma observação.</li>
+    <li>Toque em <kbd>💾 Salvar Rascunho</kbd>. Pronto — lançamento gravado!</li>
+  </ol>
+</section>
+
+<section>
+  <h2>4. As fotos — regras de ouro 📷</h2>
+  <ul>
+    <li><b>Celular sempre NA HORIZONTAL (deitado)</b> — a foto entra na ficha num quadro horizontal;
+        se fotografar em pé, as bordas de cima e de baixo são cortadas.</li>
+    <li><b>FOTO 1 – PANORÂMICA:</b> mostra a drenagem inteira e o entorno (se afaste alguns passos).</li>
+    <li><b>FOTO 2 – DETALHE:</b> aproxime e mostre o problema ou o estado do dispositivo.</li>
+    <li>A foto aparece na tela logo depois de tirar — se ficou ruim, é só tocar no botão e tirar de novo.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>5. Drenagem inspecionada some da lista</h2>
+  <p>Depois que você salva a inspeção de um KM, <b>ele deixa de aparecer na lista</b> — assim ninguém
+  lança o mesmo ponto duas vezes no mesmo celular. O título da lista mostra o progresso, por exemplo:</p>
+  <p style="text-align:center"><kbd>BR-262 - DRENAGEM SUPERFICIAL (262) — 1 já inspecionada(s)</kbd></p>
+  <div class="destaque">⚠️ Esse controle é <b>por aparelho</b>. O que o colega inspecionou no celular dele
+  continua aparecendo no seu. Por isso, <b>cada inspetor deve trabalhar no trecho combinado com o coordenador</b>.</div>
+  <p>Se salvou por engano: vá em <kbd>📋 Inspeções Salvas</kbd>, toque no 🗑 da inspeção errada, e o KM
+  volta para a lista.</p>
+</section>
+
+<section>
+  <h2>6. Ver, conferir e excluir inspeções salvas</h2>
+  <p>Na tela inicial, toque em <kbd>📋 Inspeções Salvas</kbd>. Cada inspeção mostra rodovia, KM,
+  inspetor, data/hora, quais fotos tem (📷1 📷2), o diagnóstico e o status
+  (<kbd>⏳ no celular</kbd> ou <kbd>☁✔ enviada</kbd>).</p>
+</section>
+
+<section>
+  <h2>7. Gerar os relatórios</h2>
+  <p>Na tela <kbd>📋 Inspeções Salvas</kbd>:</p>
+  <ul>
+    <li><kbd>📄 Gerar Relatório Excel</kbd> — cria as fichas no modelo oficial (2 por arquivo) e baixa no celular.</li>
+    <li><kbd>🖻 Gerar Relatório PDF</kbd> — cria <b>UM arquivo único</b> com todas as inspeções,
+        2 fichas por página. Ex.: 100 lançamentos = 50 páginas num PDF só.</li>
+  </ul>
+  <p>Os arquivos vão para a pasta <b>Downloads</b> do celular — de lá dá para compartilhar por
+  Teams, WhatsApp ou e-mail. Funciona <b>offline</b>.</p>
+</section>
+
+<section>
+  <h2>8. Envio automático ao SharePoint (em liberação)</h2>
+  <p>Em breve o app vai <b>enviar sozinho</b> as inspeções e fotos para o SharePoint do consórcio
+  sempre que o celular tiver internet. Quando for liberado:</p>
+  <ul>
+    <li>No primeiro uso, o app vai pedir <b>login com a sua conta da empresa</b> — faça uma vez e pronto.</li>
+    <li>Depois disso, tudo que estiver <kbd>⏳ no celular</kbd> sobe automaticamente quando houver sinal.</li>
+    <li>Nada se perde enquanto isso: as inspeções ficam guardadas no aparelho.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>9. Atualizações do app</h2>
+  <p>O app se atualiza <b>sozinho</b>: basta abrir com internet — na segunda abertura a versão nova
+  já está valendo. Não precisa baixar nada de loja nem reinstalar. Suas inspeções salvas
+  <b>não se perdem</b> nas atualizações.</p>
+</section>
+
+<section>
+  <h2>10. Problemas comuns</h2>
+  <ul>
+    <li><b>"Abri sem internet e não carregou"</b> → o app precisa de <b>uma</b> primeira abertura
+        com internet (item 1). Depois disso, funciona offline.</li>
+    <li><b>"A lista de rodovias veio vazia"</b> → abra o app com internet uma vez para baixar a base.</li>
+    <li><b>"Não consigo tocar em Buscar"</b> → confira se preencheu o <b>nome do inspetor</b> e os
+        dois seletores.</li>
+    <li><b>"O KM que procuro não aparece"</b> → confira o tipo (DS × DP); se você já o inspecionou,
+        ele saiu da lista (item 5).</li>
+    <li><b>"Gerei o relatório e não achei o arquivo"</b> → veja a pasta <b>Downloads</b> ou a barra de
+        notificações do celular.</li>
+    <li><b>NUNCA limpe os dados/cache do navegador</b> com inspeções pendentes — é lá que elas ficam
+        guardadas até serem enviadas.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Resumo de bolso 🎒</h2>
+  <ol>
+    <li>Abrir com internet 1x e adicionar à tela inicial</li>
+    <li>Nome → Rodovia → DS ou DP → Buscar → escolher o KM</li>
+    <li>Diagnóstico + 2 fotos <b>na horizontal</b> + Salvar</li>
+    <li>KM salvo some da lista (sem duplicidade)</li>
+    <li>No fim do dia: gerar Excel/PDF ou aguardar o envio automático</li>
+  </ol>
+</section>
+
+</main>
+
+<footer>Inspeção de Drenagem — Consórcio Caminhos da Celulose · Dúvidas: falar com o coordenador</footer>
+
+</body>
+</html>
