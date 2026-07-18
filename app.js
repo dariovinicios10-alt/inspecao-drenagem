@@ -1329,6 +1329,7 @@ async function gerarRelatorio() {
     }
 
     $('#btn-baixar-pdf').hidden = true;
+    $('#btn-compartilhar-zip').hidden = true;
     arquivoPdfPronto = null;
 
     if (arquivos.length === 1) {
@@ -1337,22 +1338,50 @@ async function gerarRelatorio() {
       msg.textContent = `✔ 1 arquivo gerado com ${inspecoes.length} inspeção(ões).`;
       mostrarToast('Relatório gerado e baixado!');
     } else {
-      // 2+ planilhas: empacota tudo num ZIP único e mostra botão "Baixar/Compartilhar"
+      // 2+ planilhas: empacota tudo num ZIP único.
+      // Chrome Android adiciona ".xlsx" no fim se o Blob tiver MIME de xlsx;
+      // usamos application/octet-stream para o navegador respeitar o nome ".zip".
       if (!window.JSZip) {
         throw new Error('Biblioteca JSZip não carregada. Abra o app uma vez com internet.');
       }
       msg.textContent = `Empacotando ${arquivos.length} planilhas em ZIP...`;
       const zip = new JSZip();
       for (const a of arquivos) zip.file(a.nome, a.buffer);
-      const blobZip = await zip.generateAsync({
-        type: 'blob',
-        mimeType: 'application/zip'
-      });
+      const blobBruto = await zip.generateAsync({ type: 'blob' });
+      // recria Blob com MIME neutro para evitar o Chrome inserir .xlsx no nome
+      const blobDownload = new Blob([blobBruto], { type: 'application/octet-stream' });
       const nomeZip = `Relatorios_Excel_${carimbo}.zip`;
-      const mb = (blobZip.size / (1024 * 1024)).toFixed(2);
-      prepararBotaoDownload(blobZip, nomeZip, mb);
-      msg.textContent = `✔ ZIP pronto com ${arquivos.length} planilhas (${inspecoes.length} inspeção(ões)). Toque no botão abaixo para baixar/compartilhar.`;
-      mostrarToast('ZIP pronto! Toque no botão abaixo.');
+
+      // Download direto via <a> criado na hora (não reusa botão do PDF)
+      const url = URL.createObjectURL(blobDownload);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nomeZip;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+      // Botão "Compartilhar direto" - usa Web Share API (bypassa validação
+      // do WhatsApp que rejeita ZIP escolhido via 📎 Documento)
+      // Blob passado no Share deve ter MIME real (application/zip)
+      const blobShare = new Blob([blobBruto], { type: 'application/zip' });
+      const fileShare = new File([blobShare], nomeZip, { type: 'application/zip' });
+      const btnShare = $('#btn-compartilhar-zip');
+      if (navigator.canShare && navigator.canShare({ files: [fileShare] })) {
+        btnShare.hidden = false;
+        btnShare.onclick = async () => {
+          try {
+            await navigator.share({ files: [fileShare], title: nomeZip });
+          } catch (e) {
+            mostrarToast('Compartilhamento cancelado ou falhou.');
+          }
+        };
+      }
+
+      const mb = (blobBruto.size / (1024 * 1024)).toFixed(2);
+      msg.textContent = `✔ ZIP baixado (${mb} MB) com ${arquivos.length} planilhas (${inspecoes.length} inspeção(ões)). Use o botão "Compartilhar" abaixo para enviar direto.`;
+      mostrarToast('ZIP baixado! Use "Compartilhar" para enviar.');
     }
   } catch (erro) {
     msg.textContent = 'Erro: ' + erro.message;
