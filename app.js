@@ -1265,9 +1265,13 @@ function prepararBotaoDownload(blob, nome, mb) {
 }
 
 function baixarArquivo(buffer, nome) {
-  const blob = new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  });
+  // Se já veio um Blob (ex.: ZIP do JSZip), preserva o MIME dele.
+  // Senão, embrulha como XLSX (comportamento antigo).
+  const blob = (buffer instanceof Blob)
+    ? buffer
+    : new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
