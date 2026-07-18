@@ -969,10 +969,6 @@ async function idbAtualizarDrenagemAvulsa(chaveAntiga, novo) {
 
 async function editarInspecaoAvulsa(insp) {
   const d = insp.drenagem || {};
-  if (d._origem !== ORIGEM_CAMPO) {
-    mostrarToast('Só inspeções incluídas em campo podem ser editadas.');
-    return;
-  }
   const chaveAntiga = chaveDrenagem(d);
   const perguntar = (rot, atual) => {
     const r = prompt(rot, atual || '');
@@ -1018,10 +1014,16 @@ async function renderizarSalvas() {
 
   salvas.sort((a, b) => (b.dataISO || '').localeCompare(a.dataISO || ''));
 
+  // Pré-computa chaves da base para saber quais inspeções são avulsas
+  // (marcada explicitamente como campo OU cuja chave não existe na base atual)
+  const chavesBase = new Set(drenagens
+    .filter(x => (x._origem || ORIGEM_PASTA) !== ORIGEM_CAMPO)
+    .map(x => chaveDrenagem(x)));
+
   salvas.forEach(insp => {
     const d = insp.drenagem || {};
     const data = insp.dataISO ? new Date(insp.dataISO).toLocaleString('pt-BR') : '';
-    const avulsa = (d._origem === ORIGEM_CAMPO);
+    const avulsa = (d._origem === ORIGEM_CAMPO) || !chavesBase.has(chaveDrenagem(d));
     const li = document.createElement('li');
     li.style.cursor = 'default';
     li.innerHTML = `
