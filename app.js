@@ -1526,12 +1526,43 @@ async function gerarZIP() {
 // Inicialização
 // =====================================================================
 function registrarServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {
-      // SW indisponível (ex.: SharePoint bloqueou) - o app segue via IndexedDB
-      console.warn('Service Worker não registrado; cache offline de arquivos indisponível.');
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('./sw.js').then(async (reg) => {
+    // Sempre que abrir com internet, força buscar versão nova do SW
+    try { reg.update(); } catch (e) {}
+    // Quando uma nova versão do SW instalar, ativa e recarrega para o usuário
+    reg.addEventListener('updatefound', () => {
+      const novo = reg.installing;
+      if (!novo) return;
+      novo.addEventListener('statechange', () => {
+        if (novo.state === 'installed' && navigator.serviceWorker.controller) {
+          novo.postMessage('skipWaiting');
+          mostrarToast('Atualização disponível — recarregando...', 2500);
+          setTimeout(() => location.reload(), 1500);
+        }
+      });
     });
-  }
+    // Pergunta ao SW ativo qual versão está no ar (para mostrar no rótulo)
+    setTimeout(mostrarVersaoSW, 400);
+  }).catch(() => {
+    console.warn('Service Worker não registrado; cache offline indisponível.');
+  });
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    // SW novo assumiu — recarrega para pegar os arquivos atualizados
+    if (!window._recarregado) { window._recarregado = true; location.reload(); }
+  });
+}
+
+function mostrarVersaoSW() {
+  const el = document.getElementById('status-versao');
+  if (!el || !navigator.serviceWorker.controller) return;
+  const canal = new MessageChannel();
+  canal.port1.onmessage = (e) => {
+    const v = String(e.data || '').replace('drenagem-', '');
+    if (v) el.textContent = v;
+  };
+  try { navigator.serviceWorker.controller.postMessage('versao', [canal.port2]); } catch (e) {}
 }
 
 function ligarEventos() {

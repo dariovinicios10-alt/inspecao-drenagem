@@ -5,7 +5,7 @@
  * ===================================================================== */
 'use strict';
 
-const VERSAO_CACHE = 'drenagem-v23';
+const VERSAO_CACHE = 'drenagem-v24';
 
 // Arquivos essenciais do app (mesma pasta no SharePoint)
 const ARQUIVOS_APP = [
@@ -108,6 +108,14 @@ async function cachePrimeiro(requisicao) {
     throw new Error('Offline e sem cache para: ' + requisicao.url);
   });
 }
+
+// Permite ao app perguntar qual versão está no ar
+self.addEventListener('message', (evento) => {
+  if (evento.data === 'versao' && evento.ports && evento.ports[0]) {
+    evento.ports[0].postMessage(VERSAO_CACHE);
+  }
+  if (evento.data === 'skipWaiting') self.skipWaiting();
+});
 
 self.addEventListener('fetch', (evento) => {
   const req = evento.request;
