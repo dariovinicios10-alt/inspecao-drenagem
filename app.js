@@ -1297,11 +1297,12 @@ async function gerarRelatorio() {
     const template = await obterTemplate();
     const carimbo = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
     const totalArquivos = Math.ceil(inspecoes.length / 2);
+    const arquivos = []; // {nome, buffer}
 
     // O template comporta 2 inspeções por página: gera 1 arquivo a cada 2
     for (let i = 0; i < inspecoes.length; i += 2) {
       const num = (i / 2) + 1;
-      msg.textContent = `Gerando arquivo ${num} de ${totalArquivos}...`;
+      msg.textContent = `Gerando planilha ${num} de ${totalArquivos}...`;
 
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(template.slice(0));
@@ -1319,13 +1320,26 @@ async function gerarRelatorio() {
       const saida = await workbook.xlsx.writeBuffer();
       const rodovia = ((inspecoes[i].drenagem || {})['Rodovia'] || 'Drenagem')
         .replace(/[^\wÀ-ú-]+/g, '_');
-      baixarArquivo(saida, `Relatorio_${rodovia}_${carimbo}_${num}.xlsx`);
-
-      // pequena pausa para o navegador não bloquear múltiplos downloads
-      await new Promise(r => setTimeout(r, 600));
+      const nome = `Relatorio_${rodovia}_${carimbo}_${String(num).padStart(2,'0')}.xlsx`;
+      arquivos.push({ nome, buffer: saida });
     }
 
-    msg.textContent = `✔ ${totalArquivos} arquivo(s) gerado(s) com ${inspecoes.length} inspeção(ões).`;
+    if (arquivos.length === 1) {
+      // 1 só planilha: baixa direto o xlsx (sem zip)
+      baixarArquivo(arquivos[0].buffer, arquivos[0].nome);
+      msg.textContent = `✔ 1 arquivo gerado com ${inspecoes.length} inspeção(ões).`;
+    } else {
+      // 2+ planilhas: empacota tudo num ZIP único
+      if (!window.JSZip) {
+        throw new Error('Biblioteca JSZip não carregada. Abra o app uma vez com internet.');
+      }
+      msg.textContent = `Empacotando ${arquivos.length} planilhas em ZIP...`;
+      const zip = new JSZip();
+      for (const a of arquivos) zip.file(a.nome, a.buffer);
+      const blobZip = await zip.generateAsync({ type: 'blob' });
+      baixarArquivo(blobZip, `Relatorios_Excel_${carimbo}.zip`);
+      msg.textContent = `✔ ZIP com ${arquivos.length} planilhas (${inspecoes.length} inspeções) baixado.`;
+    }
     mostrarToast('Relatório gerado e baixado!');
   } catch (erro) {
     msg.textContent = 'Erro: ' + erro.message;
