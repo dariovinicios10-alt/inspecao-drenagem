@@ -946,6 +946,65 @@ async function salvarRascunho() {
   }
 }
 
+// ---------- Edição de inspeção avulsa (só incluídas em campo) ----------
+async function idbAtualizarDrenagemAvulsa(chaveAntiga, novo) {
+  const db = await abrirDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE_DRENAGENS, 'readwrite');
+    const req = tx.objectStore(STORE_DRENAGENS).openCursor();
+    req.onsuccess = () => {
+      const c = req.result;
+      if (!c) return;
+      const v = c.value;
+      if (v && v._origem === ORIGEM_CAMPO && chaveDrenagem(v) === chaveAntiga) {
+        c.update(novo);
+        return;
+      }
+      c.continue();
+    };
+    tx.oncomplete = res;
+    tx.onerror = () => rej(tx.error);
+  });
+}
+
+async function editarInspecaoAvulsa(insp) {
+  const d = insp.drenagem || {};
+  if (d._origem !== ORIGEM_CAMPO) {
+    mostrarToast('Só inspeções incluídas em campo podem ser editadas.');
+    return;
+  }
+  const chaveAntiga = chaveDrenagem(d);
+  const perguntar = (rot, atual) => {
+    const r = prompt(rot, atual || '');
+    return r === null ? null : r.trim();
+  };
+  const nvSentido = perguntar('Sentido (Leste/Oeste):', d['Sentido']);
+  if (nvSentido === null) return;
+  const nvKmIni = perguntar('Km Inicial (ex: 148+003):', d['Km Inicial']);
+  if (nvKmIni === null) return;
+  const nvKmFim = perguntar('Km Final:', d['Km Final']);
+  if (nvKmFim === null) return;
+  const nvComp = perguntar('Comprimento (m):', d['Comprimento (m)']);
+  if (nvComp === null) return;
+  const nvTipo = perguntar('Descrição (Tipo, ex: DS, DP):', d['Tipo']);
+  if (nvTipo === null) return;
+
+  d['Sentido'] = nvSentido;
+  d['Km Inicial'] = nvKmIni;
+  d['Km Final'] = nvKmFim;
+  d['Comprimento (m)'] = nvComp;
+  d['Tipo'] = nvTipo;
+
+  await idbSalvar(STORE_INSPECOES, insp);
+  const idx = drenagens.findIndex(x => (x._origem === ORIGEM_CAMPO) && chaveDrenagem(x) === chaveAntiga);
+  if (idx >= 0) {
+    Object.assign(drenagens[idx], d);
+    try { await idbAtualizarDrenagemAvulsa(chaveAntiga, drenagens[idx]); } catch (e) {}
+  }
+  mostrarToast('Inspeção atualizada. ✔');
+  renderizarSalvas();
+}
+
 // ---------- Tela de inspeções salvas ----------
 async function renderizarSalvas() {
   const salvas = await idbListar(STORE_INSPECOES);
@@ -962,11 +1021,13 @@ async function renderizarSalvas() {
   salvas.forEach(insp => {
     const d = insp.drenagem || {};
     const data = insp.dataISO ? new Date(insp.dataISO).toLocaleString('pt-BR') : '';
+    const avulsa = (d._origem === ORIGEM_CAMPO);
     const li = document.createElement('li');
     li.style.cursor = 'default';
     li.innerHTML = `
       <button class="btn-excluir" title="Excluir" aria-label="Excluir inspeção">&#128465;</button>
-      <div class="linha-titulo">${escapeHTML(d['Rodovia'] || '?')} - ${escapeHTML(d['Tipo'] || '?')}</div>
+      ${avulsa ? '<button class="btn-editar" title="Editar dados (só incluídas em campo)" aria-label="Editar">&#9998;</button>' : ''}
+      <div class="linha-titulo">${escapeHTML(d['Rodovia'] || '?')} - ${escapeHTML(d['Tipo'] || '?')}${avulsa ? ' <span class="tag avulsa">avulsa</span>' : ''}</div>
       <div class="linha-detalhe">
         KM ${escapeHTML(d['Km Inicial'] || '?')} &#8594; ${escapeHTML(d['Km Final'] || '?')} &bull;
         ${escapeHTML(insp.inspetor)} &bull; ${data}
@@ -981,6 +1042,8 @@ async function renderizarSalvas() {
         renderizarSalvas();
       }
     });
+    const btnEd = li.querySelector('.btn-editar');
+    if (btnEd) btnEd.addEventListener('click', () => editarInspecaoAvulsa(insp));
     ul.appendChild(li);
   });
 

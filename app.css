@@ -158,6 +158,7 @@ textarea { resize: vertical; font-family: inherit; }
 .tag.reparar { background: var(--vermelho); }
 .tag.limpeza { background: var(--laranja); }
 .tag.implantar { background: var(--azul); }
+.tag.avulsa { background: #6d4c41; font-size: 0.65rem; padding: 1px 6px; margin-left: 4px; vertical-align: middle; }
 
 /* ---------- Seleção múltipla (Base de Dados) ---------- */
 .barra-selecao {
@@ -187,15 +188,16 @@ textarea { resize: vertical; font-family: inherit; }
 }
 .btn-perigo:disabled { opacity: 0.45; }
 
-.btn-excluir {
+.btn-excluir, .btn-editar {
   float: right;
   background: none;
   border: none;
-  color: var(--vermelho);
   font-size: 1.2rem;
   cursor: pointer;
   padding: 2px 8px;
 }
+.btn-excluir { color: var(--vermelho); }
+.btn-editar  { color: var(--azul, #1565c0); }
 
 /* ---------- Dados da drenagem (formulário) ---------- */
 #dados-drenagem table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
