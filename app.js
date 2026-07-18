@@ -1328,23 +1328,32 @@ async function gerarRelatorio() {
       arquivos.push({ nome, buffer: saida });
     }
 
+    $('#btn-baixar-pdf').hidden = true;
+    arquivoPdfPronto = null;
+
     if (arquivos.length === 1) {
       // 1 só planilha: baixa direto o xlsx (sem zip)
       baixarArquivo(arquivos[0].buffer, arquivos[0].nome);
       msg.textContent = `✔ 1 arquivo gerado com ${inspecoes.length} inspeção(ões).`;
+      mostrarToast('Relatório gerado e baixado!');
     } else {
-      // 2+ planilhas: empacota tudo num ZIP único
+      // 2+ planilhas: empacota tudo num ZIP único e mostra botão "Baixar/Compartilhar"
       if (!window.JSZip) {
         throw new Error('Biblioteca JSZip não carregada. Abra o app uma vez com internet.');
       }
       msg.textContent = `Empacotando ${arquivos.length} planilhas em ZIP...`;
       const zip = new JSZip();
       for (const a of arquivos) zip.file(a.nome, a.buffer);
-      const blobZip = await zip.generateAsync({ type: 'blob' });
-      baixarArquivo(blobZip, `Relatorios_Excel_${carimbo}.zip`);
-      msg.textContent = `✔ ZIP com ${arquivos.length} planilhas (${inspecoes.length} inspeções) baixado.`;
+      const blobZip = await zip.generateAsync({
+        type: 'blob',
+        mimeType: 'application/zip'
+      });
+      const nomeZip = `Relatorios_Excel_${carimbo}.zip`;
+      const mb = (blobZip.size / (1024 * 1024)).toFixed(2);
+      prepararBotaoDownload(blobZip, nomeZip, mb);
+      msg.textContent = `✔ ZIP pronto com ${arquivos.length} planilhas (${inspecoes.length} inspeção(ões)). Toque no botão abaixo para baixar/compartilhar.`;
+      mostrarToast('ZIP pronto! Toque no botão abaixo.');
     }
-    mostrarToast('Relatório gerado e baixado!');
   } catch (erro) {
     msg.textContent = 'Erro: ' + erro.message;
     mostrarToast('Falha ao gerar relatório: ' + erro.message, 5000);
