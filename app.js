@@ -1028,8 +1028,10 @@ async function renderizarSalvas() {
     li.style.cursor = 'default';
     li.innerHTML = `
       <button class="btn-excluir" title="Excluir" aria-label="Excluir inspeção">&#128465;</button>
-      ${avulsa ? '<button class="btn-editar" title="Editar dados (só incluídas em campo)" aria-label="Editar">&#9998;</button>' : ''}
-      <div class="linha-titulo">${escapeHTML(d['Rodovia'] || '?')} - ${escapeHTML(d['Tipo'] || '?')}${avulsa ? ' <span class="tag avulsa">avulsa</span>' : ''}</div>
+      <div class="linha-titulo">
+        ${avulsa ? '<button class="btn-editar-inline" title="Editar (avulsa)" aria-label="Editar">&#9998; Editar</button> ' : ''}
+        ${escapeHTML(d['Rodovia'] || '?')} - ${escapeHTML(d['Tipo'] || '?')}${avulsa ? ' <span class="tag avulsa">avulsa</span>' : ''}
+      </div>
       <div class="linha-detalhe">
         KM ${escapeHTML(d['Km Inicial'] || '?')} &#8594; ${escapeHTML(d['Km Final'] || '?')} &bull;
         ${escapeHTML(insp.inspetor)} &bull; ${data}
@@ -1044,7 +1046,7 @@ async function renderizarSalvas() {
         renderizarSalvas();
       }
     });
-    const btnEd = li.querySelector('.btn-editar');
+    const btnEd = li.querySelector('.btn-editar-inline');
     if (btnEd) btnEd.addEventListener('click', () => editarInspecaoAvulsa(insp));
     ul.appendChild(li);
   });

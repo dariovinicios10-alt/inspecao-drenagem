@@ -188,16 +188,26 @@ textarea { resize: vertical; font-family: inherit; }
 }
 .btn-perigo:disabled { opacity: 0.45; }
 
-.btn-excluir, .btn-editar {
+.btn-excluir {
   float: right;
   background: none;
   border: none;
+  color: var(--vermelho);
   font-size: 1.2rem;
   cursor: pointer;
   padding: 2px 8px;
 }
-.btn-excluir { color: var(--vermelho); }
-.btn-editar  { color: var(--azul, #1565c0); }
+.btn-editar-inline {
+  background: #1565c0;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-right: 6px;
+}
 
 /* ---------- Dados da drenagem (formulário) ---------- */
 #dados-drenagem table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
