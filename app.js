@@ -1014,16 +1014,14 @@ async function renderizarSalvas() {
 
   salvas.sort((a, b) => (b.dataISO || '').localeCompare(a.dataISO || ''));
 
-  // Pré-computa chaves da base para saber quais inspeções são avulsas
-  // (marcada explicitamente como campo OU cuja chave não existe na base atual)
-  const chavesBase = new Set(drenagens
-    .filter(x => (x._origem || ORIGEM_PASTA) !== ORIGEM_CAMPO)
-    .map(x => chaveDrenagem(x)));
+  // Tipos exatos que existem no CSV base. Qualquer outro Tipo => avulsa.
+  const TIPOS_BASE = new Set(["Descida d'água", 'DP - CONCRETO', 'Grelha', 'Meio-Fio', 'Sarjeta']);
 
   salvas.forEach(insp => {
     const d = insp.drenagem || {};
     const data = insp.dataISO ? new Date(insp.dataISO).toLocaleString('pt-BR') : '';
-    const avulsa = (d._origem === ORIGEM_CAMPO) || !chavesBase.has(chaveDrenagem(d));
+    const tipoTxt = String(d['Tipo'] || '').trim();
+    const avulsa = (d._origem === ORIGEM_CAMPO) || !TIPOS_BASE.has(tipoTxt);
     const li = document.createElement('li');
     li.style.cursor = 'default';
     li.innerHTML = `
