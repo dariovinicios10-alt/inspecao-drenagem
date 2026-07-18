@@ -1177,31 +1177,27 @@ async function preencherBloco(workbook, worksheet, inspecao, indiceBloco) {
   await inserirFoto(inspecao.foto2, mapa.foto2);
 }
 
-// Entrega robusta de arquivo (funciona no PWA/celular):
-// 1) menu de compartilhar nativo (precisa do toque do usuário);
-// 2) download por link; 3) abrir em nova aba.
-// Deve ser chamada a partir de um gesto do usuário (clique no botão).
-async function entregarArquivo(blob, nome) {
-  const file = new File([blob], nome, { type: blob.type || 'application/octet-stream' });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: nome }); return 'compartilhado'; }
-    catch (e) { if (e && e.name === 'AbortError') return 'cancelado'; }
-  }
-  try {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = nome;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 15000);
-    return 'baixado';
-  } catch (e) {
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    return 'nova-aba';
-  }
-}
-
 let arquivoPdfPronto = null;
+let urlDownloadAtual = null;
+
+// Prepara o LINK de download (elemento <a>) com o arquivo já pronto.
+// No celular, o toque direto num <a download> é o caminho mais compatível
+// (o clique programático é bloqueado no modo "tela inicial"/PWA).
+function prepararBotaoDownload(blob, nome, mb) {
+  if (urlDownloadAtual) { try { URL.revokeObjectURL(urlDownloadAtual); } catch (e) {} }
+  urlDownloadAtual = URL.createObjectURL(blob);
+  arquivoPdfPronto = { blob, nome };
+  const el = $('#btn-baixar-pdf');
+  el.href = urlDownloadAtual;
+  el.setAttribute('download', nome);
+  let podeCompartilhar = false;
+  try {
+    podeCompartilhar = !!(navigator.canShare &&
+      navigator.canShare({ files: [new File([blob], nome, { type: blob.type })] }));
+  } catch (e) {}
+  el.textContent = (podeCompartilhar ? '📥 Baixar / Compartilhar' : '📥 Baixar') + ` (${mb} MB)`;
+  el.hidden = false;
+}
 
 function baixarArquivo(buffer, nome) {
   const blob = new Blob([buffer], {
@@ -1465,11 +1461,9 @@ async function gerarPDF() {
 
     const paginas = Math.ceil(inspecoes.length / 2);
     const mb = (blob.size / 1048576).toFixed(1);
-    const bd = $('#btn-baixar-pdf');
-    bd.textContent = `📥 Baixar / Compartilhar PDF (${mb} MB)`;
-    bd.hidden = false;
-    msg.textContent = `✔ PDF pronto: ${inspecoes.length} ficha(s), ${paginas} página(s). Toque em "Baixar / Compartilhar" abaixo.`;
-    mostrarToast('PDF pronto! Toque em "Baixar / Compartilhar".');
+    prepararBotaoDownload(blob, nome, mb);
+    msg.textContent = `✔ PDF pronto: ${inspecoes.length} ficha(s), ${paginas} página(s). Toque no botão abaixo para baixar.`;
+    mostrarToast('PDF pronto! Toque no botão abaixo.');
   } catch (erro) {
     msg.textContent = 'Erro: ' + erro.message;
     mostrarToast('Falha ao gerar PDF: ' + erro.message, 5000);
@@ -1558,14 +1552,10 @@ async function gerarZIP() {
 
     const carimbo = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
     const nome = `Inspecoes_Drenagem_${carimbo}.zip`;
-    arquivoPdfPronto = { blob, nome }; // reaproveita o botão de entrega
-
     const mb = (blob.size / 1048576).toFixed(1);
-    const bd = $('#btn-baixar-pdf');
-    bd.textContent = `📥 Baixar / Compartilhar ZIP (${mb} MB)`;
-    bd.hidden = false;
-    msg.textContent = `✔ ZIP pronto: ${inspecoes.length} inspeção(ões) e ${nFotos} foto(s). Toque em "Baixar / Compartilhar" abaixo.`;
-    mostrarToast('ZIP pronto! Toque em "Baixar / Compartilhar".');
+    prepararBotaoDownload(blob, nome, mb);
+    msg.textContent = `✔ ZIP pronto: ${inspecoes.length} inspeção(ões) e ${nFotos} foto(s). Toque no botão abaixo para baixar.`;
+    mostrarToast('ZIP pronto! Toque no botão abaixo.');
   } catch (erro) {
     msg.textContent = 'Erro: ' + erro.message;
     mostrarToast('Falha ao gerar ZIP: ' + erro.message, 5000);
@@ -1631,10 +1621,25 @@ function ligarEventos() {
   $('#btn-gerar').addEventListener('click', gerarRelatorio);
   $('#btn-gerar-pdf').addEventListener('click', gerarPDF);
   $('#btn-zip').addEventListener('click', gerarZIP);
-  $('#btn-baixar-pdf').addEventListener('click', async () => {
+  // O elemento é um <a download>: o toque já baixa o arquivo (compatível no PWA).
+  // Se o aparelho aceitar compartilhamento, usamos o menu nativo no lugar.
+  $('#btn-baixar-pdf').addEventListener('click', async (e) => {
     if (!arquivoPdfPronto) return;
-    const r = await entregarArquivo(arquivoPdfPronto.blob, arquivoPdfPronto.nome);
-    if (r === 'baixado') mostrarToast('Arquivo baixado. Veja em Downloads.');
+    const { blob, nome } = arquivoPdfPronto;
+    const file = new File([blob], nome, { type: blob.type || 'application/octet-stream' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      e.preventDefault(); // usa o compartilhar em vez do download nativo
+      try {
+        await navigator.share({ files: [file], title: nome });
+      } catch (err) {
+        if (err && err.name !== 'AbortError') {
+          mostrarToast('Compartilhar indisponível; baixando…');
+          if (urlDownloadAtual) location.href = urlDownloadAtual;
+        }
+      }
+    }
+    // Se não puder compartilhar, NÃO prevenimos o padrão:
+    // o próprio <a download> baixa o arquivo.
   });
 
   document.querySelectorAll('.btn-voltar').forEach(btn => {
