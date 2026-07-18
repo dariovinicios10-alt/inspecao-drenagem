@@ -1421,6 +1421,36 @@ async function desenharFichaPDF(doc, inspecao, y0, logos) {
   return y - y0; // altura total usada
 }
 
+// Monta o PDF único (2 fichas por página) e devolve { blob, nome, fichas, paginas }
+async function montarPdfBlob(msg) {
+  const inspecoes = await idbListar(STORE_INSPECOES);
+  if (!inspecoes.length) throw new Error('Nenhuma inspeção salva.');
+  inspecoes.sort((a, b) => (a.dataISO || '').localeCompare(b.dataISO || ''));
+
+  const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true });
+  const logos = await obterLogosPdf();
+
+  const Y_FICHA_1 = 8;
+  const Y_FICHA_2 = 151; // metade inferior da página
+
+  for (let i = 0; i < inspecoes.length; i++) {
+    msg.textContent = `Gerando PDF: ficha ${i + 1} de ${inspecoes.length}...`;
+    if (i > 0 && i % 2 === 0) doc.addPage();
+    const y0 = (i % 2 === 0) ? Y_FICHA_1 : Y_FICHA_2;
+    await desenharFichaPDF(doc, inspecoes[i], y0, logos);
+    // devolve o controle à UI a cada ficha (importante com 100+ registros)
+    await new Promise(r => setTimeout(r, 0));
+  }
+
+  const carimbo = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+  return {
+    blob: doc.output('blob'),
+    nome: `Relatorio_Drenagem_${carimbo}.pdf`,
+    fichas: inspecoes.length,
+    paginas: Math.ceil(inspecoes.length / 2)
+  };
+}
+
 async function gerarPDF() {
   if (!(window.jspdf && window.jspdf.jsPDF)) {
     mostrarToast('Biblioteca de PDF não carregada. Abra o app uma vez com internet.');
@@ -1435,34 +1465,10 @@ async function gerarPDF() {
   arquivoPdfPronto = null;
 
   try {
-    const inspecoes = await idbListar(STORE_INSPECOES);
-    if (!inspecoes.length) throw new Error('Nenhuma inspeção salva.');
-    inspecoes.sort((a, b) => (a.dataISO || '').localeCompare(b.dataISO || ''));
-
-    const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true });
-    const logos = await obterLogosPdf();
-
-    const Y_FICHA_1 = 8;
-    const Y_FICHA_2 = 151; // metade inferior da página
-
-    for (let i = 0; i < inspecoes.length; i++) {
-      msg.textContent = `Gerando PDF: ficha ${i + 1} de ${inspecoes.length}...`;
-      if (i > 0 && i % 2 === 0) doc.addPage();
-      const y0 = (i % 2 === 0) ? Y_FICHA_1 : Y_FICHA_2;
-      await desenharFichaPDF(doc, inspecoes[i], y0, logos);
-      // devolve o controle à UI a cada ficha (importante com 100+ registros)
-      await new Promise(r => setTimeout(r, 0));
-    }
-
-    const carimbo = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
-    const nome = `Relatorio_Drenagem_${carimbo}.pdf`;
-    const blob = doc.output('blob');
-    arquivoPdfPronto = { blob, nome };
-
-    const paginas = Math.ceil(inspecoes.length / 2);
-    const mb = (blob.size / 1048576).toFixed(1);
-    prepararBotaoDownload(blob, nome, mb);
-    msg.textContent = `✔ PDF pronto: ${inspecoes.length} ficha(s), ${paginas} página(s). Toque no botão abaixo para baixar.`;
+    const pdf = await montarPdfBlob(msg);
+    const mb = (pdf.blob.size / 1048576).toFixed(1);
+    prepararBotaoDownload(pdf.blob, pdf.nome, mb);
+    msg.textContent = `✔ PDF pronto: ${pdf.fichas} ficha(s), ${pdf.paginas} página(s). Toque no botão abaixo para baixar.`;
     mostrarToast('PDF pronto! Toque no botão abaixo.');
   } catch (erro) {
     msg.textContent = 'Erro: ' + erro.message;
@@ -1473,53 +1479,16 @@ async function gerarPDF() {
 }
 
 // =====================================================================
-// Exportação em ZIP (dados + todas as fotos em um único arquivo)
+// Exportação em ZIP: o mesmo relatório PDF único, dentro de um .zip.
+// Serve como alternativa de download para celulares que travam no PDF direto.
 // =====================================================================
-function dataUrlParaUint8(dataUrl) {
-  const bin = atob(base64PuroDe(dataUrl));
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes;
-}
-
-function nomeBaseInspecao(insp) {
-  const d = insp.drenagem || {};
-  return [
-    (d['Rodovia'] || 'ROD'),
-    'KM' + (d['Km Inicial'] || ''),
-    'id' + insp.id
-  ].join('_').replace(/[^\wÀ-ú+.-]+/g, '_');
-}
-
-function csvDasInspecoes(inspecoes) {
-  const cols = ['Rodovia', 'Sentido', 'Tipo', 'Km Inicial', 'Km Final',
-    'Comprimento (m)', 'Latitude Inicial', 'Longitude Inicial',
-    'Latitude Final', 'Longitude Final'];
-  const esc = (v) => {
-    const s = String(v == null ? '' : v);
-    return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  };
-  const cab = ['Inspetor', 'Data', 'Diagnóstico', ...cols, 'Observações', 'Foto 1', 'Foto 2'];
-  const linhas = [cab.join(';')];
-  inspecoes.forEach(insp => {
-    const d = insp.drenagem || {};
-    const base = nomeBaseInspecao(insp);
-    const data = insp.dataISO ? new Date(insp.dataISO).toLocaleString('pt-BR') : '';
-    const linha = [
-      insp.inspetor || '', data, insp.diagnostico || '',
-      ...cols.map(c => d[c] || ''),
-      insp.observacoes || '',
-      insp.foto1 ? `fotos/${base}_1.jpg` : '',
-      insp.foto2 ? `fotos/${base}_2.jpg` : ''
-    ];
-    linhas.push(linha.map(esc).join(';'));
-  });
-  return '﻿' + linhas.join('\r\n') + '\r\n';
-}
-
 async function gerarZIP() {
   if (!window.JSZip) {
     mostrarToast('Biblioteca de ZIP não carregada. Abra o app uma vez com internet.');
+    return;
+  }
+  if (!(window.jspdf && window.jspdf.jsPDF)) {
+    mostrarToast('Biblioteca de PDF não carregada. Abra o app uma vez com internet.');
     return;
   }
   const btn = $('#btn-zip');
@@ -1530,31 +1499,20 @@ async function gerarZIP() {
   arquivoPdfPronto = null;
 
   try {
-    const inspecoes = await idbListar(STORE_INSPECOES);
-    if (!inspecoes.length) throw new Error('Nenhuma inspeção salva.');
-    inspecoes.sort((a, b) => (a.dataISO || '').localeCompare(b.dataISO || ''));
+    const pdf = await montarPdfBlob(msg);
 
-    msg.textContent = 'Montando ZIP...';
+    msg.textContent = 'Compactando o PDF em ZIP...';
     const zip = new JSZip();
-    zip.file('inspecoes.csv', csvDasInspecoes(inspecoes));
-    const fotos = zip.folder('fotos');
-    let nFotos = 0;
-    inspecoes.forEach(insp => {
-      const base = nomeBaseInspecao(insp);
-      if (insp.foto1) { fotos.file(`${base}_1.jpg`, dataUrlParaUint8(insp.foto1)); nFotos++; }
-      if (insp.foto2) { fotos.file(`${base}_2.jpg`, dataUrlParaUint8(insp.foto2)); nFotos++; }
-    });
-
+    zip.file(pdf.nome, pdf.blob);
     const blob = await zip.generateAsync(
       { type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } },
       (meta) => { msg.textContent = `Compactando... ${Math.round(meta.percent)}%`; }
     );
 
-    const carimbo = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
-    const nome = `Inspecoes_Drenagem_${carimbo}.zip`;
+    const nome = pdf.nome.replace(/\.pdf$/i, '.zip');
     const mb = (blob.size / 1048576).toFixed(1);
     prepararBotaoDownload(blob, nome, mb);
-    msg.textContent = `✔ ZIP pronto: ${inspecoes.length} inspeção(ões) e ${nFotos} foto(s). Toque no botão abaixo para baixar.`;
+    msg.textContent = `✔ ZIP pronto com o PDF (${pdf.fichas} ficha(s), ${pdf.paginas} página(s)). Toque no botão abaixo para baixar.`;
     mostrarToast('ZIP pronto! Toque no botão abaixo.');
   } catch (erro) {
     msg.textContent = 'Erro: ' + erro.message;
