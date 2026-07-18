@@ -955,13 +955,7 @@ async function renderizarSalvas() {
   $('#btn-gerar').disabled = salvas.length === 0;
   $('#btn-gerar-pdf').disabled = salvas.length === 0;
   $('#btn-baixar-pdf').hidden = true; // some ao reabrir a tela; volta após gerar
-
-  // Botão de envio: só aparece quando o TI configurar o CONFIG_ENVIO
-  const pendentes = salvas.filter(i => !i.enviadaEm).length;
-  const btnEnviar = $('#btn-enviar');
-  btnEnviar.hidden = !envioConfigurado();
-  btnEnviar.disabled = pendentes === 0;
-  $('#qtd-pendentes').textContent = pendentes;
+  $('#btn-zip').disabled = salvas.length === 0;
 
   salvas.sort((a, b) => (b.dataISO || '').localeCompare(a.dataISO || ''));
 
@@ -977,7 +971,6 @@ async function renderizarSalvas() {
         KM ${escapeHTML(d['Km Inicial'] || '?')} &#8594; ${escapeHTML(d['Km Final'] || '?')} &bull;
         ${escapeHTML(insp.inspetor)} &bull; ${data}
         ${insp.foto1 ? ' &bull; 📷1' : ''}${insp.foto2 ? ' 📷2' : ''}
-        ${insp.enviadaEm ? ' &bull; ☁✔ enviada' : ' &bull; ⏳ no celular'}
       </div>
       <span class="tag ${insp.diagnostico.toLowerCase()}">${escapeHTML(insp.diagnostico)}</span>`;
 
@@ -1486,161 +1479,98 @@ async function gerarPDF() {
 }
 
 // =====================================================================
-// Envio online para o SharePoint (Microsoft Graph + login corporativo)
+// Exportação em ZIP (dados + todas as fotos em um único arquivo)
 // =====================================================================
-// Para ativar: o TI registra um "App Registration" no Azure AD do tenant
-// (instruções no LEIA-ME) e preenche clientId abaixo. Sem clientId, o
-// botão de envio fica oculto e o app funciona normalmente.
-const CONFIG_ENVIO = {
-  clientId: '9c0d4bf4-4cca-4e64-8d3b-8d1031801313',    // App Registration (Azure AD)
-  tenantId: '7876d343-00f5-4c18-9764-5133f545aec6',    // Directory (tenant) ID
-  escopos: ['Sites.ReadWrite.All'],
-  siteHost: 'caminhosdacelulose.sharepoint.com',
-  sitePath: '/sites/SEU-SITE',                         // <- FALTA: caminho do site
-  pastaDestino: 'Inspecoes Drenagem'                   // pasta em "Documentos"
-};
-
-function envioConfigurado() {
-  return !!(window.msal && CONFIG_ENVIO.clientId);
-}
-
-let msalApp = null;
-function obterMsal() {
-  if (!msalApp) {
-    msalApp = new msal.PublicClientApplication({
-      auth: {
-        clientId: CONFIG_ENVIO.clientId,
-        authority: 'https://login.microsoftonline.com/' + CONFIG_ENVIO.tenantId,
-        // sempre sem o "index.html" final, para bater com a URI registrada no Azure
-        redirectUri: (window.location.origin + window.location.pathname)
-          .replace(/index\.html$/i, '')
-      },
-      cache: { cacheLocation: 'localStorage' }
-    });
-  }
-  return msalApp;
-}
-
-async function obterTokenGraph() {
-  const app = obterMsal();
-  const pedido = { scopes: CONFIG_ENVIO.escopos };
-  const contas = app.getAllAccounts();
-  if (contas.length) {
-    try {
-      const silencioso = await app.acquireTokenSilent({ ...pedido, account: contas[0] });
-      return silencioso.accessToken;
-    } catch (e) { /* token expirado: cai para o popup */ }
-  }
-  const interativo = await app.acquireTokenPopup(pedido);
-  return interativo.accessToken;
-}
-
-let siteIdCache = null;
-async function obterSiteId(token) {
-  if (siteIdCache) return siteIdCache;
-  const resp = await fetch(
-    `https://graph.microsoft.com/v1.0/sites/${CONFIG_ENVIO.siteHost}:${CONFIG_ENVIO.sitePath}`,
-    { headers: { Authorization: 'Bearer ' + token } }
-  );
-  if (!resp.ok) throw new Error('Site do SharePoint não encontrado (HTTP ' + resp.status + ')');
-  siteIdCache = (await resp.json()).id;
-  return siteIdCache;
-}
-
-function dataUrlParaBlob(dataUrl) {
+function dataUrlParaUint8(dataUrl) {
   const bin = atob(base64PuroDe(dataUrl));
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new Blob([bytes], { type: 'image/jpeg' });
+  return bytes;
 }
 
-async function uploadGraph(token, siteId, caminho, conteudo, tipo) {
-  const url = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/` +
-    encodeURIComponent(CONFIG_ENVIO.pastaDestino) + '/' +
-    caminho.split('/').map(encodeURIComponent).join('/') + ':/content';
-  const resp = await fetch(url, {
-    method: 'PUT',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': tipo },
-    body: conteudo
-  });
-  if (!resp.ok) throw new Error('Falha no upload (HTTP ' + resp.status + ')');
-}
-
-// Envia UMA inspeção: dados.json + foto1.jpg + foto2.jpg em uma subpasta
-async function enviarInspecao(insp, token, siteId) {
+function nomeBaseInspecao(insp) {
   const d = insp.drenagem || {};
-  const slug = [
-    (d['Rodovia'] || 'ROD').replace(/[^\w-]+/g, '_'),
-    (d['Km Inicial'] || 'KM').replace(/[^\w+-]+/g, '_'),
-    (insp.dataISO || '').slice(0, 10),
+  return [
+    (d['Rodovia'] || 'ROD'),
+    'KM' + (d['Km Inicial'] || ''),
     'id' + insp.id
-  ].join('_');
-
-  const dados = { ...insp };
-  delete dados.foto1; delete dados.foto2; // fotos vão como .jpg
-  await uploadGraph(token, siteId, `${slug}/dados.json`,
-    JSON.stringify(dados, null, 2), 'application/json');
-  if (insp.foto1) {
-    await uploadGraph(token, siteId, `${slug}/foto1_panoramica.jpg`,
-      dataUrlParaBlob(insp.foto1), 'image/jpeg');
-  }
-  if (insp.foto2) {
-    await uploadGraph(token, siteId, `${slug}/foto2_detalhe.jpg`,
-      dataUrlParaBlob(insp.foto2), 'image/jpeg');
-  }
-
-  insp.enviadaEm = new Date().toISOString();
-  await idbSalvar(STORE_INSPECOES, insp);
+  ].join('_').replace(/[^\wÀ-ú+.-]+/g, '_');
 }
 
-let envioEmAndamento = false;
-async function enviarPendentes(silencioso) {
-  if (envioEmAndamento) return;
-  if (!envioConfigurado()) {
-    if (!silencioso) {
-      mostrarToast('Envio ainda não configurado pelo TI (veja o LEIA-ME).', 5000);
-    }
+function csvDasInspecoes(inspecoes) {
+  const cols = ['Rodovia', 'Sentido', 'Tipo', 'Km Inicial', 'Km Final',
+    'Comprimento (m)', 'Latitude Inicial', 'Longitude Inicial',
+    'Latitude Final', 'Longitude Final'];
+  const esc = (v) => {
+    const s = String(v == null ? '' : v);
+    return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const cab = ['Inspetor', 'Data', 'Diagnóstico', ...cols, 'Observações', 'Foto 1', 'Foto 2'];
+  const linhas = [cab.join(';')];
+  inspecoes.forEach(insp => {
+    const d = insp.drenagem || {};
+    const base = nomeBaseInspecao(insp);
+    const data = insp.dataISO ? new Date(insp.dataISO).toLocaleString('pt-BR') : '';
+    const linha = [
+      insp.inspetor || '', data, insp.diagnostico || '',
+      ...cols.map(c => d[c] || ''),
+      insp.observacoes || '',
+      insp.foto1 ? `fotos/${base}_1.jpg` : '',
+      insp.foto2 ? `fotos/${base}_2.jpg` : ''
+    ];
+    linhas.push(linha.map(esc).join(';'));
+  });
+  return '﻿' + linhas.join('\r\n') + '\r\n';
+}
+
+async function gerarZIP() {
+  if (!window.JSZip) {
+    mostrarToast('Biblioteca de ZIP não carregada. Abra o app uma vez com internet.');
     return;
   }
-  if (!navigator.onLine) {
-    if (!silencioso) mostrarToast('Sem internet agora. As inspeções serão enviadas quando houver sinal.');
-    return;
-  }
-
-  // No modo silencioso (automático) não pode abrir popup de login:
-  // só envia se o inspetor já entrou com a conta alguma vez.
-  if (silencioso && !obterMsal().getAllAccounts().length) return;
-
-  const todas = await idbListar(STORE_INSPECOES);
-  const pendentes = todas.filter(i => !i.enviadaEm);
-  if (!pendentes.length) {
-    if (!silencioso) mostrarToast('Nenhuma inspeção pendente de envio.');
-    return;
-  }
-
-  envioEmAndamento = true;
+  const btn = $('#btn-zip');
   const msg = $('#msg-exportacao');
+  btn.disabled = true;
   msg.hidden = false;
-  let enviadas = 0;
+  $('#btn-baixar-pdf').hidden = true;
+  arquivoPdfPronto = null;
 
   try {
-    const token = await obterTokenGraph();
-    const siteId = await obterSiteId(token);
-    for (const insp of pendentes) {
-      msg.textContent = `Enviando ${enviadas + 1} de ${pendentes.length}...`;
-      await enviarInspecao(insp, token, siteId);
-      enviadas++;
-    }
-    msg.textContent = `✔ ${enviadas} inspeção(ões) enviada(s) ao SharePoint.`;
-    mostrarToast(`${enviadas} inspeção(ões) enviada(s) ao SharePoint!`);
+    const inspecoes = await idbListar(STORE_INSPECOES);
+    if (!inspecoes.length) throw new Error('Nenhuma inspeção salva.');
+    inspecoes.sort((a, b) => (a.dataISO || '').localeCompare(b.dataISO || ''));
+
+    msg.textContent = 'Montando ZIP...';
+    const zip = new JSZip();
+    zip.file('inspecoes.csv', csvDasInspecoes(inspecoes));
+    const fotos = zip.folder('fotos');
+    let nFotos = 0;
+    inspecoes.forEach(insp => {
+      const base = nomeBaseInspecao(insp);
+      if (insp.foto1) { fotos.file(`${base}_1.jpg`, dataUrlParaUint8(insp.foto1)); nFotos++; }
+      if (insp.foto2) { fotos.file(`${base}_2.jpg`, dataUrlParaUint8(insp.foto2)); nFotos++; }
+    });
+
+    const blob = await zip.generateAsync(
+      { type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } },
+      (meta) => { msg.textContent = `Compactando... ${Math.round(meta.percent)}%`; }
+    );
+
+    const carimbo = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+    const nome = `Inspecoes_Drenagem_${carimbo}.zip`;
+    arquivoPdfPronto = { blob, nome }; // reaproveita o botão de entrega
+
+    const mb = (blob.size / 1048576).toFixed(1);
+    const bd = $('#btn-baixar-pdf');
+    bd.textContent = `📥 Baixar / Compartilhar ZIP (${mb} MB)`;
+    bd.hidden = false;
+    msg.textContent = `✔ ZIP pronto: ${inspecoes.length} inspeção(ões) e ${nFotos} foto(s). Toque em "Baixar / Compartilhar" abaixo.`;
+    mostrarToast('ZIP pronto! Toque em "Baixar / Compartilhar".');
   } catch (erro) {
-    msg.textContent = enviadas
-      ? `Enviadas ${enviadas} de ${pendentes.length}. Erro: ${erro.message}`
-      : 'Erro no envio: ' + erro.message;
-    if (!silencioso) mostrarToast('Falha no envio: ' + erro.message, 5000);
+    msg.textContent = 'Erro: ' + erro.message;
+    mostrarToast('Falha ao gerar ZIP: ' + erro.message, 5000);
   } finally {
-    envioEmAndamento = false;
-    if ($('#tela-salvas').classList.contains('ativa')) renderizarSalvas();
+    btn.disabled = false;
   }
 }
 
@@ -1700,12 +1630,12 @@ function ligarEventos() {
   $('#btn-salvar').addEventListener('click', salvarRascunho);
   $('#btn-gerar').addEventListener('click', gerarRelatorio);
   $('#btn-gerar-pdf').addEventListener('click', gerarPDF);
+  $('#btn-zip').addEventListener('click', gerarZIP);
   $('#btn-baixar-pdf').addEventListener('click', async () => {
     if (!arquivoPdfPronto) return;
     const r = await entregarArquivo(arquivoPdfPronto.blob, arquivoPdfPronto.nome);
-    if (r === 'baixado') mostrarToast('PDF baixado. Veja em Downloads.');
+    if (r === 'baixado') mostrarToast('Arquivo baixado. Veja em Downloads.');
   });
-  $('#btn-enviar').addEventListener('click', () => enviarPendentes(false));
 
   document.querySelectorAll('.btn-voltar').forEach(btn => {
     btn.addEventListener('click', () => mostrarTela(btn.dataset.voltar));
@@ -1719,11 +1649,7 @@ function ligarEventos() {
     localStorage.setItem('inspetor', e.target.value.trim());
   });
 
-  // Ao recuperar o sinal na rodovia, tenta enviar o que ficou pendente
-  window.addEventListener('online', () => {
-    atualizarStatusConexao();
-    enviarPendentes(true);
-  });
+  window.addEventListener('online', atualizarStatusConexao);
   window.addEventListener('offline', atualizarStatusConexao);
 }
 
@@ -1734,8 +1660,6 @@ async function iniciar() {
   await atualizarContadorSalvas();
   const ok = await carregarBase(false);
   if (ok) { popularRodovias(); }
-  // Se abriu com internet e há inspeções pendentes, envia em segundo plano
-  if (navigator.onLine) enviarPendentes(true);
 }
 
 // aguarda os scripts defer (PapaParse) estarem disponíveis
