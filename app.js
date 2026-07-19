@@ -1009,8 +1009,7 @@ async function renderizarSalvas() {
   $('#msg-vazio').hidden = salvas.length > 0;
   $('#btn-gerar').disabled = salvas.length === 0;
   $('#btn-gerar-pdf').disabled = salvas.length === 0;
-  $('#btn-baixar-pdf').hidden = true; // some ao reabrir a tela; volta após gerar
-  $('#btn-zip').disabled = salvas.length === 0;
+  resetarPreparados(); // some o botão Baixar até gerar de novo
 
   salvas.sort((a, b) => (b.dataISO || '').localeCompare(a.dataISO || ''));
 
@@ -1242,26 +1241,73 @@ async function preencherBloco(workbook, worksheet, inspecao, indiceBloco) {
   await inserirFoto(inspecao.foto2, mapa.foto2);
 }
 
-let arquivoPdfPronto = null;
-let urlDownloadAtual = null;
+// Estado dos relatórios preparados (aguardando o "Baixar").
+// excel: { arquivos: [{nome, buffer}], carimbo }
+// pdf:   { blob, nome, fichas, paginas, mb }
+let preparados = { excel: null, pdf: null };
 
-// Prepara o LINK de download (elemento <a>) com o arquivo já pronto.
-// No celular, o toque direto num <a download> é o caminho mais compatível
-// (o clique programático é bloqueado no modo "tela inicial"/PWA).
-function prepararBotaoDownload(blob, nome, mb) {
-  if (urlDownloadAtual) { try { URL.revokeObjectURL(urlDownloadAtual); } catch (e) {} }
-  urlDownloadAtual = URL.createObjectURL(blob);
-  arquivoPdfPronto = { blob, nome };
-  const el = $('#btn-baixar-pdf');
-  el.href = urlDownloadAtual;
-  el.setAttribute('download', nome);
-  let podeCompartilhar = false;
-  try {
-    podeCompartilhar = !!(navigator.canShare &&
-      navigator.canShare({ files: [new File([blob], nome, { type: blob.type })] }));
-  } catch (e) {}
-  el.textContent = (podeCompartilhar ? '📥 Baixar / Compartilhar' : '📥 Baixar') + ` (${mb} MB)`;
-  el.hidden = false;
+function resetarPreparados() {
+  preparados = { excel: null, pdf: null };
+  const b = $('#btn-baixar-pdf');
+  if (b) { b.hidden = true; b.textContent = '📥 Baixar'; }
+}
+
+function atualizarBotaoBaixar() {
+  const b = $('#btn-baixar-pdf');
+  if (!b) return;
+  const partes = [];
+  if (preparados.pdf) partes.push('PDF');
+  if (preparados.excel) partes.push(`${preparados.excel.arquivos.length} Excel`);
+  if (partes.length === 0) { b.hidden = true; return; }
+  b.hidden = false;
+  b.textContent = `📥 Baixar (${partes.join(' + ')})`;
+}
+
+// Faz o download real: PDF sozinho vai direto; qualquer combinação com Excel
+// (ou os dois) sai como ZIP único.
+async function baixarPreparados() {
+  if (!preparados.excel && !preparados.pdf) {
+    mostrarToast('Gere ao menos um relatório antes.');
+    return;
+  }
+
+  // Só PDF: download direto (blob PDF, sem ZIP)
+  if (preparados.pdf && !preparados.excel) {
+    const { blob, nome } = preparados.pdf;
+    disparaDownloadBlob(blob, nome);
+    return;
+  }
+
+  // Excel sozinho ou Excel+PDF: ZIP único
+  if (!window.JSZip) {
+    mostrarToast('JSZip não carregado. Abra o app uma vez com internet.');
+    return;
+  }
+  const zip = new JSZip();
+  if (preparados.excel) {
+    for (const a of preparados.excel.arquivos) zip.file(a.nome, a.buffer);
+  }
+  if (preparados.pdf) {
+    zip.file(preparados.pdf.nome, preparados.pdf.blob);
+  }
+  const blobBruto = await zip.generateAsync({ type: 'blob' });
+  // MIME neutro para o Chrome Android não inserir ".xlsx" no fim do nome
+  const blobDl = new Blob([blobBruto], { type: 'application/octet-stream' });
+  const carimbo = (preparados.excel && preparados.excel.carimbo)
+    || new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+  const nome = `Relatorios_${carimbo}.zip`;
+  disparaDownloadBlob(blobDl, nome);
+}
+
+function disparaDownloadBlob(blob, nome) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 function baixarArquivo(buffer, nome) {
@@ -1328,61 +1374,11 @@ async function gerarRelatorio() {
       arquivos.push({ nome, buffer: saida });
     }
 
-    $('#btn-baixar-pdf').hidden = true;
-    $('#btn-compartilhar-zip').hidden = true;
-    arquivoPdfPronto = null;
-
-    if (arquivos.length === 1) {
-      // 1 só planilha: baixa direto o xlsx (sem zip)
-      baixarArquivo(arquivos[0].buffer, arquivos[0].nome);
-      msg.textContent = `✔ 1 arquivo gerado com ${inspecoes.length} inspeção(ões).`;
-      mostrarToast('Relatório gerado e baixado!');
-    } else {
-      // 2+ planilhas: empacota tudo num ZIP único.
-      // Chrome Android adiciona ".xlsx" no fim se o Blob tiver MIME de xlsx;
-      // usamos application/octet-stream para o navegador respeitar o nome ".zip".
-      if (!window.JSZip) {
-        throw new Error('Biblioteca JSZip não carregada. Abra o app uma vez com internet.');
-      }
-      msg.textContent = `Empacotando ${arquivos.length} planilhas em ZIP...`;
-      const zip = new JSZip();
-      for (const a of arquivos) zip.file(a.nome, a.buffer);
-      const blobBruto = await zip.generateAsync({ type: 'blob' });
-      // recria Blob com MIME neutro para evitar o Chrome inserir .xlsx no nome
-      const blobDownload = new Blob([blobBruto], { type: 'application/octet-stream' });
-      const nomeZip = `Relatorios_Excel_${carimbo}.zip`;
-
-      // Download direto via <a> criado na hora (não reusa botão do PDF)
-      const url = URL.createObjectURL(blobDownload);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = nomeZip;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
-
-      // Botão "Compartilhar direto" - usa Web Share API (bypassa validação
-      // do WhatsApp que rejeita ZIP escolhido via 📎 Documento)
-      // Blob passado no Share deve ter MIME real (application/zip)
-      const blobShare = new Blob([blobBruto], { type: 'application/zip' });
-      const fileShare = new File([blobShare], nomeZip, { type: 'application/zip' });
-      const btnShare = $('#btn-compartilhar-zip');
-      if (navigator.canShare && navigator.canShare({ files: [fileShare] })) {
-        btnShare.hidden = false;
-        btnShare.onclick = async () => {
-          try {
-            await navigator.share({ files: [fileShare], title: nomeZip });
-          } catch (e) {
-            mostrarToast('Compartilhamento cancelado ou falhou.');
-          }
-        };
-      }
-
-      const mb = (blobBruto.size / (1024 * 1024)).toFixed(2);
-      msg.textContent = `✔ ZIP baixado (${mb} MB) com ${arquivos.length} planilhas (${inspecoes.length} inspeção(ões)). Use o botão "Compartilhar" abaixo para enviar direto.`;
-      mostrarToast('ZIP baixado! Use "Compartilhar" para enviar.');
-    }
+    // Guarda o Excel preparado; usuário clica "Baixar" quando quiser
+    preparados.excel = { arquivos, carimbo };
+    atualizarBotaoBaixar();
+    msg.textContent = `✔ Excel pronto: ${arquivos.length} planilha(s) com ${inspecoes.length} inspeção(ões). Toque em Baixar.`;
+    mostrarToast('Excel pronto — toque em Baixar.');
   } catch (erro) {
     msg.textContent = 'Erro: ' + erro.message;
     mostrarToast('Falha ao gerar relatório: ' + erro.message, 5000);
@@ -1582,62 +1578,17 @@ async function gerarPDF() {
   const msg = $('#msg-exportacao');
   btn.disabled = true;
   msg.hidden = false;
-  $('#btn-baixar-pdf').hidden = true;
-  arquivoPdfPronto = null;
 
   try {
     const pdf = await montarPdfBlob(msg);
     const mb = (pdf.blob.size / 1048576).toFixed(1);
-    prepararBotaoDownload(pdf.blob, pdf.nome, mb);
-    msg.textContent = `✔ PDF pronto: ${pdf.fichas} ficha(s), ${pdf.paginas} página(s). Toque no botão abaixo para baixar.`;
-    mostrarToast('PDF pronto! Toque no botão abaixo.');
+    preparados.pdf = { blob: pdf.blob, nome: pdf.nome, fichas: pdf.fichas, paginas: pdf.paginas, mb };
+    atualizarBotaoBaixar();
+    msg.textContent = `✔ PDF pronto: ${pdf.fichas} ficha(s), ${pdf.paginas} página(s), ${mb} MB. Toque em Baixar.`;
+    mostrarToast('PDF pronto — toque em Baixar.');
   } catch (erro) {
     msg.textContent = 'Erro: ' + erro.message;
     mostrarToast('Falha ao gerar PDF: ' + erro.message, 5000);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-// =====================================================================
-// Exportação em ZIP: o mesmo relatório PDF único, dentro de um .zip.
-// Serve como alternativa de download para celulares que travam no PDF direto.
-// =====================================================================
-async function gerarZIP() {
-  if (!window.JSZip) {
-    mostrarToast('Biblioteca de ZIP não carregada. Abra o app uma vez com internet.');
-    return;
-  }
-  if (!(window.jspdf && window.jspdf.jsPDF)) {
-    mostrarToast('Biblioteca de PDF não carregada. Abra o app uma vez com internet.');
-    return;
-  }
-  const btn = $('#btn-zip');
-  const msg = $('#msg-exportacao');
-  btn.disabled = true;
-  msg.hidden = false;
-  $('#btn-baixar-pdf').hidden = true;
-  arquivoPdfPronto = null;
-
-  try {
-    const pdf = await montarPdfBlob(msg);
-
-    msg.textContent = 'Compactando o PDF em ZIP...';
-    const zip = new JSZip();
-    zip.file(pdf.nome, pdf.blob);
-    const blob = await zip.generateAsync(
-      { type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } },
-      (meta) => { msg.textContent = `Compactando... ${Math.round(meta.percent)}%`; }
-    );
-
-    const nome = pdf.nome.replace(/\.pdf$/i, '.zip');
-    const mb = (blob.size / 1048576).toFixed(1);
-    prepararBotaoDownload(blob, nome, mb);
-    msg.textContent = `✔ ZIP pronto com o PDF (${pdf.fichas} ficha(s), ${pdf.paginas} página(s)). Toque no botão abaixo para baixar.`;
-    mostrarToast('ZIP pronto! Toque no botão abaixo.');
-  } catch (erro) {
-    msg.textContent = 'Erro: ' + erro.message;
-    mostrarToast('Falha ao gerar ZIP: ' + erro.message, 5000);
   } finally {
     btn.disabled = false;
   }
@@ -1730,27 +1681,7 @@ function ligarEventos() {
   $('#btn-salvar').addEventListener('click', salvarRascunho);
   $('#btn-gerar').addEventListener('click', gerarRelatorio);
   $('#btn-gerar-pdf').addEventListener('click', gerarPDF);
-  $('#btn-zip').addEventListener('click', gerarZIP);
-  // O elemento é um <a download>: o toque já baixa o arquivo (compatível no PWA).
-  // Se o aparelho aceitar compartilhamento, usamos o menu nativo no lugar.
-  $('#btn-baixar-pdf').addEventListener('click', async (e) => {
-    if (!arquivoPdfPronto) return;
-    const { blob, nome } = arquivoPdfPronto;
-    const file = new File([blob], nome, { type: blob.type || 'application/octet-stream' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      e.preventDefault(); // usa o compartilhar em vez do download nativo
-      try {
-        await navigator.share({ files: [file], title: nome });
-      } catch (err) {
-        if (err && err.name !== 'AbortError') {
-          mostrarToast('Compartilhar indisponível; baixando…');
-          if (urlDownloadAtual) location.href = urlDownloadAtual;
-        }
-      }
-    }
-    // Se não puder compartilhar, NÃO prevenimos o padrão:
-    // o próprio <a download> baixa o arquivo.
-  });
+  $('#btn-baixar-pdf').addEventListener('click', baixarPreparados);
 
   document.querySelectorAll('.btn-voltar').forEach(btn => {
     btn.addEventListener('click', () => mostrarTela(btn.dataset.voltar));
