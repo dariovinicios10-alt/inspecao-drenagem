@@ -161,6 +161,19 @@ textarea { resize: vertical; font-family: inherit; }
 .tag.avulsa { background: #6d4c41; font-size: 0.65rem; padding: 1px 6px; margin-left: 4px; vertical-align: middle; }
 .tag.extraida-tag { background: #78909c; font-size: 0.65rem; padding: 1px 6px; margin-left: 4px; vertical-align: middle; }
 .lista li.extraida { opacity: 0.55; background: #f4f6f5; }
+.btn-restaurar {
+  display: inline-block;
+  margin-top: 6px;
+  margin-left: 8px;
+  background: none;
+  border: 1px solid #2e7d32;
+  color: #2e7d32;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
 .btn-desmarcar {
   display: inline-block;
   margin-top: 6px;

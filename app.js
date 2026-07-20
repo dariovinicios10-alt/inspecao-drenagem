@@ -16,9 +16,10 @@ const TEMPLATE_B64 = 'UEsDBBQABgAIAAAAIQAUOsv3uQEAAJ8GAAATAAgCW0NvbnRlbnRfVHlwZX
 const ORIGEM_PASTA = 'CSV da pasta (SharePoint)';
 
 const DB_NOME = 'inspecao-drenagem';
-const DB_VERSAO = 1;
+const DB_VERSAO = 2;
 const STORE_DRENAGENS = 'drenagens';
 const STORE_INSPECOES = 'inspecoes';
+const STORE_LIXEIRA = 'lixeira';
 
 // Tamanho da foto no Excel: 8,86 cm largura x 5 cm altura (96 DPI)
 const FOTO_LARGURA_PX = Math.round((8.86 / 2.54) * 96); // ~335 px
@@ -69,6 +70,9 @@ function abrirDB() {
       }
       if (!db.objectStoreNames.contains(STORE_INSPECOES)) {
         db.createObjectStore(STORE_INSPECOES, { keyPath: 'id', autoIncrement: true });
+      }
+      if (!db.objectStoreNames.contains(STORE_LIXEIRA)) {
+        db.createObjectStore(STORE_LIXEIRA, { keyPath: 'id', autoIncrement: true });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -1047,10 +1051,13 @@ async function renderizarSalvas() {
       ${extraida ? '<button class="btn-desmarcar" title="Voltar para pendente (entra na próxima extração)">↩ desmarcar</button>' : ''}`;
 
     li.querySelector('.btn-excluir').addEventListener('click', async () => {
-      if (confirm('Excluir esta inspeção?')) {
+      if (confirm('Excluir esta inspeção? (vai para a Lixeira)')) {
+        const copia = Object.assign({}, insp, { _excluidaISO: new Date().toISOString() });
+        await idbSalvar(STORE_LIXEIRA, copia);
         await idbExcluir(STORE_INSPECOES, insp.id);
         await atualizarContadorSalvas();
         renderizarSalvas();
+        mostrarToast('Inspeção movida para a Lixeira.');
       }
     });
     const btnEd = li.querySelector('.btn-editar-inline');
@@ -1066,6 +1073,61 @@ async function renderizarSalvas() {
   });
 
   mostrarTela('tela-salvas');
+}
+
+// =====================================================================
+// Lixeira — inspeções excluídas com possibilidade de restaurar
+// =====================================================================
+async function renderizarLixeira() {
+  const itens = await idbListar(STORE_LIXEIRA);
+  const ul = $('#lista-lixeira');
+  const msgVazia = $('#msg-lixeira-vazia');
+  const btnEsvaziar = $('#btn-esvaziar-lixeira');
+  ul.innerHTML = '';
+
+  if (!itens.length) {
+    msgVazia.hidden = false;
+    btnEsvaziar.hidden = true;
+    return;
+  }
+  msgVazia.hidden = true;
+  btnEsvaziar.hidden = false;
+
+  itens.sort((a, b) => (b._excluidaISO || '').localeCompare(a._excluidaISO || ''));
+
+  itens.forEach(item => {
+    const d = item.drenagem || {};
+    const dataExcl = item._excluidaISO
+      ? new Date(item._excluidaISO).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+      : '';
+    const dataInsp = item.dataISO ? new Date(item.dataISO).toLocaleString('pt-BR') : '';
+    const li = document.createElement('li');
+    li.style.cursor = 'default';
+    li.classList.add('extraida');
+    li.innerHTML = `
+      <div class="linha-titulo">
+        ${escapeHTML(d['Rodovia'] || '?')} - ${escapeHTML(d['Tipo'] || '?')}
+      </div>
+      <div class="linha-detalhe">
+        KM ${escapeHTML(d['Km Inicial'] || '?')} &#8594; ${escapeHTML(d['Km Final'] || '?')} &bull;
+        ${escapeHTML(item.inspetor || '?')} &bull; ${dataInsp}
+        ${item.foto1 ? ' &bull; 📷1' : ''}${item.foto2 ? ' 📷2' : ''}
+      </div>
+      <span class="tag ${(item.diagnostico || '').toLowerCase()}">${escapeHTML(item.diagnostico || '?')}</span>
+      <span class="tag extraida-tag">&#128465; excluída ${dataExcl}</span>
+      <button class="btn-restaurar" title="Restaurar inspeção">&#8634; Restaurar</button>`;
+
+    li.querySelector('.btn-restaurar').addEventListener('click', async () => {
+      const restaurado = Object.assign({}, item);
+      delete restaurado._excluidaISO;
+      await idbSalvar(STORE_INSPECOES, restaurado);
+      await idbExcluir(STORE_LIXEIRA, item.id);
+      await atualizarContadorSalvas();
+      mostrarToast('Inspeção restaurada!');
+      renderizarLixeira();
+    });
+    ul.appendChild(li);
+  });
 }
 
 // =====================================================================
@@ -1716,6 +1778,15 @@ function ligarEventos() {
     if (!confirm(`Excluir ${origens.length} arquivo(s) (${qtd} registros) da base?`)) return;
     await excluirOrigens(origens);
     mostrarToast('Arquivos removidos da base.');
+  });
+  $('#btn-ver-lixeira').addEventListener('click', renderizarLixeira);
+  $('#btn-esvaziar-lixeira').addEventListener('click', async () => {
+    const itens = await idbListar(STORE_LIXEIRA);
+    if (!itens.length) return;
+    if (!confirm(`Esvaziar lixeira? ${itens.length} inspeção(ões) serão perdidas definitivamente.`)) return;
+    await idbLimparStore(STORE_LIXEIRA);
+    mostrarToast('Lixeira esvaziada.');
+    renderizarLixeira();
   });
   $('#btn-recarregar-pasta').addEventListener('click', async () => {
     localStorage.removeItem('ignorarCsvPasta');
