@@ -1007,8 +1007,11 @@ async function renderizarSalvas() {
   const ul = $('#lista-salvas');
   ul.innerHTML = '';
   $('#msg-vazio').hidden = salvas.length > 0;
-  $('#btn-gerar').disabled = salvas.length === 0;
-  $('#btn-gerar-pdf').disabled = salvas.length === 0;
+  const pendentes = salvas.filter(i => !i.extraidaISO).length;
+  $('#btn-gerar').disabled = pendentes === 0;
+  $('#btn-gerar-pdf').disabled = pendentes === 0;
+  $('#btn-gerar').textContent = `📄 Gerar Relatório Excel (${pendentes})`;
+  $('#btn-gerar-pdf').textContent = `🗎 Gerar Relatório PDF (${pendentes})`;
   resetarPreparados(); // some o botão Baixar até gerar de novo
 
   salvas.sort((a, b) => (b.dataISO || '').localeCompare(a.dataISO || ''));
@@ -1021,20 +1024,27 @@ async function renderizarSalvas() {
     const data = insp.dataISO ? new Date(insp.dataISO).toLocaleString('pt-BR') : '';
     const tipoTxt = String(d['Tipo'] || '').trim();
     const avulsa = (d._origem === ORIGEM_CAMPO) || !TIPOS_BASE.has(tipoTxt);
+    const extraida = !!insp.extraidaISO;
+    const dataExt = extraida
+      ? new Date(insp.extraidaISO).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+      : '';
     const li = document.createElement('li');
     li.style.cursor = 'default';
+    if (extraida) li.classList.add('extraida');
     li.innerHTML = `
       <button class="btn-excluir" title="Excluir" aria-label="Excluir inspeção">&#128465;</button>
       <div class="linha-titulo">
         ${avulsa ? '<button class="btn-editar-inline" title="Editar (avulsa)" aria-label="Editar">&#9998; Editar</button> ' : ''}
         ${escapeHTML(d['Rodovia'] || '?')} - ${escapeHTML(d['Tipo'] || '?')}${avulsa ? ' <span class="tag avulsa">avulsa</span>' : ''}
+        ${extraida ? `<span class="tag extraida-tag">✔ extraída ${dataExt}</span>` : ''}
       </div>
       <div class="linha-detalhe">
         KM ${escapeHTML(d['Km Inicial'] || '?')} &#8594; ${escapeHTML(d['Km Final'] || '?')} &bull;
         ${escapeHTML(insp.inspetor)} &bull; ${data}
         ${insp.foto1 ? ' &bull; 📷1' : ''}${insp.foto2 ? ' 📷2' : ''}
       </div>
-      <span class="tag ${insp.diagnostico.toLowerCase()}">${escapeHTML(insp.diagnostico)}</span>`;
+      <span class="tag ${insp.diagnostico.toLowerCase()}">${escapeHTML(insp.diagnostico)}</span>
+      ${extraida ? '<button class="btn-desmarcar" title="Voltar para pendente (entra na próxima extração)">↩ desmarcar</button>' : ''}`;
 
     li.querySelector('.btn-excluir').addEventListener('click', async () => {
       if (confirm('Excluir esta inspeção?')) {
@@ -1045,6 +1055,13 @@ async function renderizarSalvas() {
     });
     const btnEd = li.querySelector('.btn-editar-inline');
     if (btnEd) btnEd.addEventListener('click', () => editarInspecaoAvulsa(insp));
+    const btnDes = li.querySelector('.btn-desmarcar');
+    if (btnDes) btnDes.addEventListener('click', async () => {
+      delete insp.extraidaISO;
+      await idbSalvar(STORE_INSPECOES, insp);
+      mostrarToast('Voltou para pendente — entra na próxima extração.');
+      renderizarSalvas();
+    });
     ul.appendChild(li);
   });
 
@@ -1263,18 +1280,39 @@ function atualizarBotaoBaixar() {
   b.textContent = `📥 Baixar (${partes.join(' + ')})`;
 }
 
+// Marca as inspeções incluídas no download como "extraídas" (carimbo de data).
+// Elas continuam no banco (a drenagem segue "feita"), mas saem das próximas
+// gerações de Excel/PDF — evita duplicar entre manhã e tarde.
+async function marcarExtraidas(ids) {
+  if (!ids || !ids.length) return;
+  const agora = new Date().toISOString();
+  const todas = await idbListar(STORE_INSPECOES);
+  const alvo = todas.filter(i => ids.includes(i.id));
+  for (const insp of alvo) {
+    insp.extraidaISO = agora;
+    await idbSalvar(STORE_INSPECOES, insp);
+  }
+}
+
 // Faz o download real: PDF sozinho vai direto; qualquer combinação com Excel
-// (ou os dois) sai como ZIP único.
+// (ou os dois) sai como ZIP único. Depois carimba as inspeções como extraídas.
 async function baixarPreparados() {
   if (!preparados.excel && !preparados.pdf) {
     mostrarToast('Gere ao menos um relatório antes.');
     return;
   }
+  const idsExtrair = [...new Set([
+    ...((preparados.excel && preparados.excel.ids) || []),
+    ...((preparados.pdf && preparados.pdf.ids) || [])
+  ])];
 
   // Só PDF: download direto (blob PDF, sem ZIP)
   if (preparados.pdf && !preparados.excel) {
     const { blob, nome } = preparados.pdf;
     disparaDownloadBlob(blob, nome);
+    await marcarExtraidas(idsExtrair);
+    mostrarToast('Baixado. Inspeções marcadas como extraídas. ✔');
+    renderizarSalvas();
     return;
   }
 
@@ -1297,6 +1335,9 @@ async function baixarPreparados() {
     || new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
   const nome = `Relatorios_${carimbo}.zip`;
   disparaDownloadBlob(blobDl, nome);
+  await marcarExtraidas(idsExtrair);
+  mostrarToast('Baixado. Inspeções marcadas como extraídas. ✔');
+  renderizarSalvas();
 }
 
 function disparaDownloadBlob(blob, nome) {
@@ -1340,8 +1381,13 @@ async function gerarRelatorio() {
   msg.hidden = false;
 
   try {
-    const inspecoes = await idbListar(STORE_INSPECOES);
-    if (!inspecoes.length) throw new Error('Nenhuma inspeção salva.');
+    const todas = await idbListar(STORE_INSPECOES);
+    const inspecoes = todas.filter(i => !i.extraidaISO); // só as ainda não extraídas
+    if (!inspecoes.length) {
+      throw new Error(todas.length
+        ? 'Todas as inspeções já foram extraídas. Lance novas ou use "desmarcar" na lista.'
+        : 'Nenhuma inspeção salva.');
+    }
     inspecoes.sort((a, b) => (a.dataISO || '').localeCompare(b.dataISO || ''));
 
     const template = await obterTemplate();
@@ -1375,7 +1421,7 @@ async function gerarRelatorio() {
     }
 
     // Guarda o Excel preparado; usuário clica "Baixar" quando quiser
-    preparados.excel = { arquivos, carimbo };
+    preparados.excel = { arquivos, carimbo, ids: inspecoes.map(i => i.id) };
     atualizarBotaoBaixar();
     msg.textContent = `✔ Excel pronto: ${arquivos.length} planilha(s) com ${inspecoes.length} inspeção(ões). Toque em Baixar.`;
     mostrarToast('Excel pronto — toque em Baixar.');
@@ -1540,8 +1586,13 @@ async function desenharFichaPDF(doc, inspecao, y0, logos) {
 
 // Monta o PDF único (2 fichas por página) e devolve { blob, nome, fichas, paginas }
 async function montarPdfBlob(msg) {
-  const inspecoes = await idbListar(STORE_INSPECOES);
-  if (!inspecoes.length) throw new Error('Nenhuma inspeção salva.');
+  const todas = await idbListar(STORE_INSPECOES);
+  const inspecoes = todas.filter(i => !i.extraidaISO); // só as ainda não extraídas
+  if (!inspecoes.length) {
+    throw new Error(todas.length
+      ? 'Todas as inspeções já foram extraídas. Lance novas ou use "desmarcar" na lista.'
+      : 'Nenhuma inspeção salva.');
+  }
   inspecoes.sort((a, b) => (a.dataISO || '').localeCompare(b.dataISO || ''));
 
   const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true });
@@ -1564,7 +1615,8 @@ async function montarPdfBlob(msg) {
     blob: doc.output('blob'),
     nome: `Relatorio_Drenagem_${carimbo}.pdf`,
     fichas: inspecoes.length,
-    paginas: Math.ceil(inspecoes.length / 2)
+    paginas: Math.ceil(inspecoes.length / 2),
+    ids: inspecoes.map(i => i.id)
   };
 }
 
@@ -1582,7 +1634,7 @@ async function gerarPDF() {
   try {
     const pdf = await montarPdfBlob(msg);
     const mb = (pdf.blob.size / 1048576).toFixed(1);
-    preparados.pdf = { blob: pdf.blob, nome: pdf.nome, fichas: pdf.fichas, paginas: pdf.paginas, mb };
+    preparados.pdf = { blob: pdf.blob, nome: pdf.nome, fichas: pdf.fichas, paginas: pdf.paginas, mb, ids: pdf.ids };
     atualizarBotaoBaixar();
     msg.textContent = `✔ PDF pronto: ${pdf.fichas} ficha(s), ${pdf.paginas} página(s), ${mb} MB. Toque em Baixar.`;
     mostrarToast('PDF pronto — toque em Baixar.');
