@@ -297,6 +297,23 @@ textarea { resize: vertical; font-family: inherit; }
   border: 1px solid var(--cinza-borda);
 }
 
+/* ---------- Coordenadas manuais ---------- */
+.manual-gps { margin-bottom: 4px; }
+.manual-gps summary {
+  font-size: 0.8rem;
+  color: var(--azul);
+  cursor: pointer;
+  font-weight: 600;
+}
+.campos-gps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}
+.campos-gps label { margin: 0; font-size: 0.8rem; }
+.campos-gps input { font-size: 0.85rem; padding: 8px; }
+
 /* ---------- Avisos e toast ---------- */
 .aviso { text-align: center; color: var(--texto-suave); font-size: 0.9rem; }
 

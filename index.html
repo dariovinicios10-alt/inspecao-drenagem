@@ -133,11 +133,27 @@
       </div>
 
       <div class="card">
-        <span class="rotulo-grupo">Coordenadas (GPS do celular)</span>
-        <button id="btn-gps-ini" class="btn btn-secundario" style="margin-top:0">&#128205; Capturar posição INICIAL</button>
-        <p id="gps-ini-info" class="aviso" style="margin:6px 0 12px">Nenhuma posição capturada</p>
-        <button id="btn-gps-fim" class="btn btn-secundario" style="margin-top:0">&#128205; Capturar posição FINAL</button>
-        <p id="gps-fim-info" class="aviso" style="margin:6px 0 0">Nenhuma posição capturada</p>
+        <span class="rotulo-grupo">Coordenadas — posição INICIAL</span>
+        <button id="btn-gps-ini" class="btn btn-secundario" style="margin-top:0">&#128205; Capturar GPS</button>
+        <p id="gps-ini-info" class="aviso" style="margin:6px 0 6px">Nenhuma posição capturada</p>
+        <details class="manual-gps">
+          <summary>Digitar manualmente</summary>
+          <div class="campos-gps">
+            <div><label for="nv-lat-ini">Latitude</label><input type="text" id="nv-lat-ini" placeholder="-21.12345678" inputmode="decimal"></div>
+            <div><label for="nv-lon-ini">Longitude</label><input type="text" id="nv-lon-ini" placeholder="-52.12345678" inputmode="decimal"></div>
+          </div>
+        </details>
+
+        <span class="rotulo-grupo" style="margin-top:14px">Coordenadas — posição FINAL</span>
+        <button id="btn-gps-fim" class="btn btn-secundario" style="margin-top:0">&#128205; Capturar GPS</button>
+        <p id="gps-fim-info" class="aviso" style="margin:6px 0 6px">Nenhuma posição capturada</p>
+        <details class="manual-gps">
+          <summary>Digitar manualmente</summary>
+          <div class="campos-gps">
+            <div><label for="nv-lat-fim">Latitude</label><input type="text" id="nv-lat-fim" placeholder="-21.12345678" inputmode="decimal"></div>
+            <div><label for="nv-lon-fim">Longitude</label><input type="text" id="nv-lon-fim" placeholder="-52.12345678" inputmode="decimal"></div>
+          </div>
+        </details>
       </div>
 
       <p class="aviso">Campos com * são obrigatórios. O restante pode ficar vazio (N/D).</p>

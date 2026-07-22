@@ -794,6 +794,8 @@ function abrirNovaDrenagem() {
   $('#nv-comp').value = '';
   $('#gps-ini-info').textContent = 'Nenhuma posição capturada';
   $('#gps-fim-info').textContent = 'Nenhuma posição capturada';
+  $('#nv-lat-ini').value = ''; $('#nv-lon-ini').value = '';
+  $('#nv-lat-fim').value = ''; $('#nv-lon-fim').value = '';
   mostrarTela('tela-nova');
 }
 
@@ -836,10 +838,10 @@ async function continuarNovaDrenagem() {
     'Km Inicial': kmIni,
     'Km Final': $('#nv-km-fim').value.trim(),
     'Comprimento (m)': $('#nv-comp').value.trim(),
-    'Latitude Inicial': gpsNova.latIni,
-    'Longitude Inicial': gpsNova.lonIni,
-    'Latitude Final': gpsNova.latFim,
-    'Longitude Final': gpsNova.lonFim,
+    'Latitude Inicial': gpsNova.latIni || $('#nv-lat-ini').value.trim(),
+    'Longitude Inicial': gpsNova.lonIni || $('#nv-lon-ini').value.trim(),
+    'Latitude Final': gpsNova.latFim || $('#nv-lat-fim').value.trim(),
+    'Longitude Final': gpsNova.lonFim || $('#nv-lon-fim').value.trim(),
     _origem: ORIGEM_CAMPO
   };
 
